@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="pdImg">	
+	<select  id="fixCnt" resultType="int" parameterType="com.vertexid.vo.NaviVo" >
+		SELECT COUNT(*) CNT
+		FROM (
+			SELECT 
+				f.fix_photo_innb
+				, f.om_code
+				, (select s.team_code from tb_empl_manage s where f.regist_man = s.em_no) AS team_code
+				, (select s.om_nm from tb_orgnzt_manage s where f.om_code = s.om_code) AS om_nm
+				, f.sm_code
+				, (select s.sm_nm from tb_str_manage  s where f.sm_code = s.sm_code) AS sm_nm
+				, ifnull(f.fix_pd_img_url,'') AS fix_pd_img_url
+				, f.regist_man
+				, (select s.em_nm from tb_empl_manage s where f.regist_man = s.em_no) AS em_nm
+				, ifnull(date_format(f.updt_de,'%Y-%m-%d %H:%i'),'') AS updt_de
+			FROM tb_diary_fix_pd_prdlst_photo f
+			WHERE f.delete_at = 'N'
+			AND f.base_de     = #{params.baseDate}
+		) a
+		WHERE 1=1
+		<if test="params.smNm != null and !params.smNm.equals('') ">
+			AND a.sm_nm LIKE '%${params.smNm}%'
+	    </if>
+		<if test="params.emNm != null and !params.emNm.equals('') ">
+		 	AND a.em_nm LIKE '%${params.emNm}%'
+	     </if>
+	   	 <if test="params.omCode != null and !params.omCode.equals('') ">
+		 	AND a.om_code = #{params.omCode}
+	     </if>
+	   	 <if test="params.tmCode != null and !params.tmCode.equals('') ">
+		 	AND a.team_code = #{params.tmCode}
+	     </if>		
+	</select>
+	
+	<select  id="fixList" resultType="java.util.Map" parameterType="com.vertexid.vo.NaviVo" >
+	${pagingStart}
+		SELECT *
+		FROM (
+			SELECT 
+				f.fix_photo_innb
+				, f.om_code
+				, (select s.team_code from tb_empl_manage s where f.regist_man = s.em_no) AS team_code
+				, (select s.om_nm from tb_orgnzt_manage s where f.om_code = s.om_code) AS om_nm
+				, f.sm_code
+				, (select s.sm_nm from tb_str_manage  s where f.sm_code = s.sm_code) AS sm_nm
+				, ifnull(f.fix_pd_img_url,'') AS fix_pd_img_url
+				, f.regist_man
+				, (select s.em_nm from tb_empl_manage s where f.regist_man = s.em_no) AS em_nm
+				, ifnull(date_format(f.updt_de,'%Y-%m-%d %H:%i'),'') AS updt_de
+			FROM tb_diary_fix_pd_prdlst_photo f
+			WHERE f.delete_at = 'N'
+			AND f.base_de     = #{params.baseDate}
+		) a
+		WHERE 1=1
+		<if test="params.smNm != null and !params.smNm.equals('') ">
+			AND a.sm_nm LIKE '%${params.smNm}%'
+	    </if>
+		<if test="params.emNm != null and !params.emNm.equals('') ">
+		 	AND a.em_nm LIKE '%${params.emNm}%'
+	     </if>
+	   	 <if test="params.omCode != null and !params.omCode.equals('') ">
+		 	AND a.om_code = #{params.omCode}
+	     </if>
+	   	 <if test="params.tmCode != null and !params.tmCode.equals('') ">
+		 	AND a.team_code = #{params.tmCode}
+	     </if>		
+	     ORDER BY a.updt_de DESC
+    ${pagingEnd}
+	</select>
+	
+	<insert id="fixPdImgSave" parameterType="com.dasa.activity.vo.ActivityPdImgVo">
+		INSERT INTO tb_diary_fix_pd_prdlst_photo
+			(cm_code, om_code, sm_code, fix_pd_img_url, base_de, delete_at, regist_man, regist_de, updt_man, updt_de)
+		VALUES
+			(#{cm_code}, #{om_code}, #{sm_code}, #{pd_img_url}, #{base_de}, 'N', #{em_no}, now(), #{em_no}, now())
+	</insert>
+	
+<!-- 	순회 -->
+	<select  id="rndCnt" resultType="int" parameterType="com.vertexid.vo.NaviVo" >
+		SELECT COUNT(*) CNT
+		FROM (
+			SELECT 
+				r.rnd_photo_innb
+				, r.om_code
+				, (select s.team_code from tb_empl_manage s where r.regist_man = s.em_no) AS team_code
+				, (select s.om_nm from tb_orgnzt_manage s where r.om_code = s.om_code) AS om_nm
+				, r.sm_code
+				, (select s.sm_nm from tb_str_manage  s where r.sm_code = s.sm_code)  AS sm_nm
+				, ifnull(r.rnd_pd_img_url,'') AS rnd_pd_img_url
+				, r.regist_man
+				, (select s.em_nm from tb_empl_manage s where r.regist_man = s.em_no)  AS em_nm
+				, ifnull(date_format(r.updt_de,'%Y-%m-%d %H:%i'),'') AS updt_de
+			FROM tb_diary_rnd_pd_prdlst_photo r
+			WHERE r.delete_at = 'N'
+			<if test="params.startDate != null and !params.startDate.equals('') ">
+				AND r.base_de <![CDATA[ >= ]]> #{params.startDate}
+			</if>
+			<if test="params.endDate != null and !params.endDate.equals('') ">
+				AND r.base_de <![CDATA[ <= ]]> #{params.endDate}
+			</if>
+<!-- 			AND r.base_de BETWEEN #{params.startDate} AND #{params.endDate} -->
+		) a
+		WHERE 1=1
+		<if test="params.smNm != null and !params.smNm.equals('') ">
+			AND a.sm_nm LIKE '%${params.smNm}%'
+	    </if>
+		<if test="params.emNm != null and !params.emNm.equals('') ">
+		 	AND a.em_nm LIKE '%${params.emNm}%'
+	     </if>
+	   	 <if test="params.omCode != null and !params.omCode.equals('') ">
+		 	AND a.om_code = #{params.omCode}
+	     </if>
+	   	 <if test="params.tmCode != null and !params.tmCode.equals('') ">
+		 	AND a.team_code = #{params.tmCode}
+	     </if>		
+	</select>
+	
+	<select  id="rndPdImgList" resultType="java.util.Map" parameterType="com.vertexid.vo.NaviVo" >
+	${pagingStart}
+		SELECT *
+		FROM (
+			SELECT 
+				r.rnd_photo_innb
+				, r.om_code
+				, (select s.team_code from tb_empl_manage s where r.regist_man = s.em_no) AS team_code
+				, (select s.om_nm from tb_orgnzt_manage s where r.om_code = s.om_code) AS om_nm
+				, r.sm_code
+				, (select s.sm_nm from tb_str_manage  s where r.sm_code = s.sm_code)  AS sm_nm
+				, ifnull(r.rnd_pd_img_url,'') AS rnd_pd_img_url
+				, r.regist_man
+				, (select s.em_nm from tb_empl_manage s where r.regist_man = s.em_no)  AS em_nm
+				, ifnull(date_format(r.updt_de,'%Y-%m-%d %H:%i'),'') AS updt_de
+			FROM tb_diary_rnd_pd_prdlst_photo r
+			WHERE r.delete_at = 'N'
+			<if test="params.startDate != null and !params.startDate.equals('') ">
+				AND r.base_de <![CDATA[ >= ]]> #{params.startDate}
+			</if>
+			<if test="params.endDate != null and !params.endDate.equals('') ">
+				AND r.base_de <![CDATA[ <= ]]> #{params.endDate}
+			</if>
+<!-- 			AND r.base_de BETWEEN #{params.startDate} AND #{params.endDate} -->
+		) a
+		WHERE 1=1
+		<if test="params.smNm != null and !params.smNm.equals('') ">
+			AND a.sm_nm LIKE '%${params.smNm}%'
+	    </if>
+		<if test="params.emNm != null and !params.emNm.equals('') ">
+		 	AND a.em_nm LIKE '%${params.emNm}%'
+	     </if>
+	   	 <if test="params.omCode != null and !params.omCode.equals('') ">
+		 	AND a.om_code = #{params.omCode}
+	     </if>
+	   	 <if test="params.tmCode != null and !params.tmCode.equals('') ">
+		 	AND a.team_code = #{params.tmCode}
+	     </if>		
+	     ORDER BY a.updt_de DESC
+    ${pagingEnd}
+	</select>
+	
+	<insert id="rndPdImgSave" parameterType="com.dasa.activity.vo.ActivityPdImgVo">
+		INSERT INTO tb_diary_rnd_pd_prdlst_photo
+			(cm_code, om_code, sm_code, rnd_pd_img_url, base_de, delete_at, regist_man, regist_de, updt_man, updt_de)
+		VALUES
+			(#{cm_code}, #{om_code}, #{sm_code}, #{pd_img_url}, #{base_de}, 'N', #{em_no}, now(), #{em_no}, now())
+	</insert>
+	
+</mapper>

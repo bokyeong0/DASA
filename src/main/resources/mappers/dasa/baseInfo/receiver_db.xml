@@ -1,0 +1,862 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<!-- 
+CREATE OR REPLACE VIEW v_store_list AS
+SELECT sm.sm_code, cg.cg_code, cg.cg_nm, me.me_code, me.me_nm, sm.sm_nm, sm.sm_odr, om.cm_code, om.om_code, om.om_nm
+FROM tb_str_empl se, tb_empl_manage em, tb_str_manage sm, tb_orgnzt_manage om, tb_cstmr_group cg, tb_manage_entrps me
+WHERE se.em_no = em.em_no AND se.sm_code = sm.sm_code AND se.om_code = om.om_code AND sm.cg_code = cg.cg_code AND (sm.me_code = me.me_code AND sm.cg_code = me.cg_code) AND se.delete_at = 'N' AND em.use_at = 'Y' AND em.delete_at = 'N' AND sm.use_at = 'Y' AND sm.delete_at = 'N' AND om.use_at = 'Y' AND om.delete_at = 'N' AND cg.use_at = 'Y' AND cg.delete_at = 'N' AND me.use_at = 'Y' AND me.delete_at = 'N'
+GROUP BY se.sm_code;
+ -->
+<mapper namespace="receiver">
+	<select id="organTreeList" resultType="com.dasa.communication.vo.ReceiverVo" parameterType="map" >
+		SELECT CASE om.om_orgnzt_se 
+		         WHEN 1 THEN 'om' 
+		         ELSE 'tm' 
+		       END                                   AS 'add_flag', 
+		       om.om_code                            AS 'key', 
+		       om.om_nm                              AS 'dp_name', 
+		       om.om_parent_no                       AS 'p_key', 
+		       om.om_orgnzt_se                       AS 'depth', 
+		       CONCAT(t.om_nm, '#', om.om_parent_no) AS 't_order' 
+		FROM   (SELECT om_code, 
+		               CASE om_orgnzt_se 
+		                 WHEN 1 THEN om_code 
+		                 ELSE om_parent_no 
+		               END AS om_parent_no, 
+		               om_nm, 
+		               om_orgnzt_se, 
+		               om_sort_ordr 
+		        FROM   tb_orgnzt_manage om 
+		        WHERE  om.cm_code = #{cm_code}
+		               AND om.use_at = 'Y' 
+		               AND om.delete_at = 'N'
+		               <if test="em_id == 'dw_admin'">   <!-- A20180109 k2s 다우마케팅 북부, 원주지점 추가 -->
+		               and (om.om_code in ('05213','05223') or om.om_parent_no in ('05213','05223'))
+		               </if>
+		               ) om, 
+		       tb_orgnzt_manage t 
+		WHERE  t.om_code = om.om_parent_no 
+			<if test="om_code!=null">
+				AND t.om_code = #{om_code}
+			</if>
+		       AND t.use_at = 'Y' 
+		       AND t.delete_at = 'N' 
+		ORDER  BY t_order, 
+		          om.om_orgnzt_se, 
+		          om.om_sort_ordr;  
+	</select>
+	    
+    <select id="storeTreeList" resultType="com.dasa.communication.vo.ReceiverVo" parameterType="map" >
+		SELECT 'cg'      AS 'add_flag', 
+               cg_code    AS 'key', 
+               cg_nm      AS 'dp_name', 
+               1          AS 'depth', 
+               ''         AS 'p_key', 
+               cg_code AS 't_order' 
+        FROM   v_store_list 
+        WHERE  cm_code = #{cm_code} 
+		<if test="om_code!=null and !om_code.equals('000')">
+		       AND om_code = #{om_code}
+		</if>
+        UNION 
+        SELECT 'me'       AS 'add_flag', 
+               me_code    AS 'key', 
+               me_nm      AS 'dp_name', 
+               2          AS 'depth', 
+               cg_code    AS 'p_key', 
+               CONCAT(cg_code, '#', me_nm, '#', me_code) AS 't_order' 
+        FROM   v_store_list 
+        WHERE  cm_code = #{cm_code} 
+		<if test="om_code!=null and !om_code.equals('000')">
+		       AND om_code = #{om_code}
+		</if>
+        UNION 
+        SELECT 'sm'       AS 'add_flag', 
+               sm_code    AS 'key', 
+               sm_nm      AS 'dp_name', 
+               3          AS 'depth', 
+               me_code    AS 'p_key', 
+               CONCAT(cg_code, '#', me_nm, '#', me_code, '#', sm_nm) AS 't_order' 
+        FROM   v_store_list 
+        WHERE  cm_code = #{cm_code} 
+		<if test="om_code!=null and !om_code.equals('000')">
+			AND om_code = #{om_code}
+		</if>
+		ORDER  BY t_order;  
+	</select>
+	
+	<select id="employeeList" resultType="com.dasa.communication.vo.ReceiverVo" parameterType="com.dasa.communication.vo.ReceiverVo" >
+		<choose>
+			<when test="add_flag.equals('or')">
+				SELECT
+					'om'                      AS 'add_flag',
+					om_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('om', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage 
+				WHERE
+					cm_code = #{cm_code}
+		               <if test="em_id == 'dw_admin'">   <!-- A20180109 k2s 다우마케팅 서부, 원주지점 추가 -->
+		               and (om_code in ('05213','05223') or om_parent_no in ('05213','05223'))
+		               </if>					
+				<if test="om_code!=null and !om_code.equals('000')">
+					AND om_code = #{om_code}
+				</if>
+					AND om_orgnzt_se = 1 
+					AND use_at = 'Y' 
+					AND delete_at = 'N' 
+				ORDER  BY om_sort_ordr;
+			</when>
+			<when test="add_flag.equals('om')">
+				<!-- SELECT
+					'om'                      AS 'add_flag',
+					om_code, 
+					null                      AS 'tm_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order',
+					CONCAT('om', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_code = #{om_code}
+				UNION -->
+				SELECT
+					'tm'                      AS 'add_flag',
+					om_parent_no              AS 'om_code', 
+					om_code                   AS 'tm_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					om_sort_ordr              AS 't_order',
+					CONCAT('tm', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name' 
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_parent_no = #{om_code}
+					AND use_at = 'Y' 
+					AND delete_at = 'N'
+				ORDER BY t_order;					
+			</when>
+			<when test="add_flag.equals('tm')">
+				<!-- SELECT
+					'tm'                      AS add_flag,
+					om_parent_no              AS om_code,
+					om_code                   AS tm_code,
+					null                      AS em_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					0                         AS 't_order',
+					CONCAT('tm', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_code = #{tm_code}
+				UNION -->
+				SELECT
+					'em'                      AS add_flag,
+					em.bhf_code               AS om_code,
+					em.team_code              AS tm_code,
+					em.em_no                  AS em_code,
+					em.em_dty_code,
+					CASE em.em_dty_code WHEN "0000000009" THEN 1 WHEN "0000000008" THEN 2 WHEN "0000000006" THEN 3 ELSE 4 END
+					                          AS 't_order',
+					CONCAT('em', em.em_no)    AS 'key',
+					CONCAT("[", om.om_nm, " ", CASE em.em_dty_code WHEN "0000000006" THEN "고정" WHEN "0000000007" THEN "순회" WHEN "0000000008" THEN "팀장" WHEN "0000000009" THEN "관리자" END, "] ", em.em_nm)
+					                          AS 'dp_name'
+				FROM
+					tb_empl_manage em
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					em.team_code = om.om_code
+				WHERE
+					em.team_code = #{tm_code}
+					AND em.use_at = 'Y'
+					AND em.delete_at = 'N'
+				<if test="!em_dty_code.equals('')">
+					AND em.em_dty_code = #{em_dty_code}
+				</if>
+				ORDER BY t_order, dp_name
+			</when>
+			<when test="add_flag.equals('st_or')">
+				SELECT
+					'om'                      AS 'add_flag',
+					v.om_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('om', v.om_code, #{em_dty_code})     AS 'key',
+					v.om_nm                     AS 'dp_name'
+				FROM
+					v_store_list v 
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					v.om_code = om.om_code
+				WHERE
+					v.cm_code = #{cm_code}
+		               <if test="em_id == 'dw_admin'">   <!-- A20180109 M20180118 k2s 다우마케팅 북부, 원주지점 추가 20190530 서부, 원주로 변경 -->
+		               and (om.om_code in ('05213','05223') or om.om_parent_no in ('05213','05223'))
+		               </if>					
+				<if test="om_code!=null and !om_code.equals('000')">
+					AND v.om_code = #{om_code}
+				</if>
+					AND om.use_at = 'Y' 
+					AND om.delete_at = 'N'
+				GROUP BY v.om_code
+				ORDER  BY om.om_sort_ordr;
+			</when>
+			<when test="add_flag.equals('st')">
+				SELECT
+					'cg'                      AS 'add_flag',
+					cg_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('cg', cg_code, #{em_dty_code})     AS 'key',
+					cg_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					cm_code = #{cm_code}
+					<if test="om_code!=null and !om_code.equals('000')">
+					AND om_code = #{om_code}
+					</if>
+				GROUP BY cg_code
+			</when>
+			<when test="add_flag.equals('cg')">
+				<!-- SELECT
+					'cg'                      AS 'add_flag',
+					cg_code, 
+					null                      AS 'me_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order', 
+					CONCAT('cg', cg_code, #{em_dty_code})     AS 'key',
+					cg_nm                     AS 'dp_name' 
+				FROM
+					v_store_list
+				WHERE
+					cg_code = #{cg_code}
+				GROUP BY cg_code
+				UNION -->
+				SELECT
+					'me'                      AS 'add_flag',
+					cg_code, 
+					me_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					me_nm                     AS 't_order',
+					CONCAT('me', cg_code, me_code, #{em_dty_code}) AS 'key',
+					me_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					cg_code = #{cg_code}
+					AND cm_code = #{cm_code}
+					<if test="om_code!=null and !om_code.equals('000')">
+					AND om_code = #{om_code}
+					</if>
+				GROUP BY me_code, cg_code
+				ORDER BY t_order;
+			</when>
+			<when test="add_flag.equals('me')">
+				<!-- SELECT
+					'me'                      AS 'add_flag',
+					cg_code, 
+					me_code,
+					null                      AS 'sm_code',
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order',
+					CONCAT('me', cg_code, me_code, #{em_dty_code}) AS 'key',
+					me_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					me_code = #{me_code}
+					AND cg_code = #{cg_code}
+				GROUP BY me_code, cg_code
+				UNION -->
+				SELECT
+					'sm'                      AS 'add_flag',
+					cg_code, 
+					me_code, 
+					sm_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					sm_nm                     AS 't_order',
+					CONCAT('sm', sm_code, #{em_dty_code})     AS 'key',
+					sm_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					me_code = #{me_code}
+					AND cg_code = #{cg_code}
+					AND cm_code = #{cm_code}
+					<if test="om_code!=null and !om_code.equals('000')">
+					AND om_code = #{om_code}
+					</if>
+				ORDER BY t_order;
+			</when>
+			<when test="add_flag.equals('sm')">
+				<!-- SELECT
+					'sm'                      AS 'add_flag',
+					null                      AS om_code,
+					null		              AS tm_code,
+					null        	          AS em_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					cg_code, 
+					me_code, 
+					sm_code, 
+					0                         AS 't_order',
+					CONCAT('sm', sm_code, #{em_dty_code})     AS 'key',
+					sm_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					sm_code = #{sm_code}
+				UNION -->
+				SELECT
+					'em'                      AS add_flag,
+					em.bhf_code               AS om_code,
+					em.team_code              AS tm_code,
+					em.em_no                  AS em_code,
+					em.em_dty_code,
+					v.cg_code, 
+					v.me_code, 
+					v.sm_code, 
+					CASE em.em_dty_code WHEN "0000000009" THEN 1 WHEN "0000000008" THEN 2 WHEN "0000000006" THEN 3 ELSE 4 END
+					                          AS 't_order',
+					CONCAT('em', em.em_no)    AS 'key',
+					CONCAT("[", om.om_nm, " ", CASE em.em_dty_code WHEN "0000000006" THEN "고정" WHEN "0000000007" THEN "순회" WHEN "0000000008" THEN "팀장" WHEN "0000000009" THEN "관리자" END, "] ", em.em_nm)
+					                          AS 'dp_name'
+				FROM
+					v_store_list v
+				LEFT OUTER JOIN
+					tb_str_empl se
+				ON
+					se.sm_code = v.sm_code
+					AND se.delete_at = 'N'
+				LEFT OUTER JOIN 
+					tb_empl_manage em
+				ON
+					em.em_no = se.em_no
+					AND em.use_at = 'Y'
+					AND em.delete_at = 'N'
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					em.team_code = om.om_code
+				WHERE
+					v.sm_code = #{sm_code}
+					AND v.cm_code = #{cm_code}
+					<if test="om_code!=null and !om_code.equals('000')">
+					AND v.om_code = #{om_code}
+					</if>
+				<if test="!em_dty_code.equals('')">
+					AND em.em_dty_code = #{em_dty_code}
+				</if>
+				ORDER BY t_order, dp_name
+			</when>
+		</choose>
+    </select>
+    
+    	
+	<select id="targetList" resultType="com.dasa.communication.vo.ReceiverVo" parameterType="String" >
+		<choose>
+			<when test="add_flag.equals('or')">
+				SELECT
+					'om'                      AS 'add_flag',
+					om_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('om', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage 
+				WHERE
+					cm_code = #{cm_code}
+				<if test="om_code!=null">
+					AND om_code = #{om_code}
+				</if>
+					AND om_orgnzt_se = 1 
+					AND use_at = 'Y' 
+					AND delete_at = 'N' 
+				ORDER  BY om_sort_ordr;
+			</when>
+			<when test="add_flag.equals('om')">
+				<!-- SELECT
+					'om'                      AS 'add_flag',
+					om_code, 
+					null                      AS 'tm_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order',
+					CONCAT('om', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_code = #{om_code}
+				UNION -->
+				SELECT
+					'tm'                      AS 'add_flag',
+					om_parent_no              AS 'om_code', 
+					om_code                   AS 'tm_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					om_sort_ordr              AS 't_order',
+					CONCAT('tm', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name' 
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_parent_no = #{om_code}
+					AND use_at = 'Y' 
+					AND delete_at = 'N'
+				ORDER BY t_order;					
+			</when>
+			<when test="add_flag.equals('tm')">
+				<!-- SELECT
+					'tm'                      AS add_flag,
+					om_parent_no              AS om_code,
+					om_code                   AS tm_code,
+					null                      AS em_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					0                         AS 't_order',
+					CONCAT('tm', om_code, #{em_dty_code})     AS 'key',
+					om_nm                     AS 'dp_name'
+				FROM
+					tb_orgnzt_manage
+				WHERE
+					om_code = #{tm_code}
+				UNION -->
+				SELECT
+					'em'                      AS add_flag,
+					em.bhf_code               AS om_code,
+					em.team_code              AS tm_code,
+					em.em_no                  AS em_code,
+					em.em_dty_code,
+					CASE em.em_dty_code WHEN "0000000009" THEN 1 WHEN "0000000008" THEN 2 WHEN "0000000006" THEN 3 ELSE 4 END
+					                          AS 't_order',
+					CONCAT('em', em.em_no)    AS 'key',
+					CONCAT("[", om.om_nm, " ", CASE em.em_dty_code WHEN "0000000006" THEN "고정" WHEN "0000000007" THEN "순회" WHEN "0000000008" THEN "팀장" WHEN "0000000009" THEN "관리자" END, "] ", em.em_nm)
+					                          AS 'dp_name'
+				FROM
+					tb_empl_manage em
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					em.team_code = om.om_code
+				WHERE
+					em.team_code = #{tm_code}
+					AND em.use_at = 'Y'
+					AND em.delete_at = 'N'
+				<if test="!em_dty_code.equals('')">
+					AND em.em_dty_code = #{em_dty_code}
+				</if>
+				ORDER BY t_order, dp_name
+			</when>
+			<when test="add_flag.equals('st_or')">
+				SELECT
+					'om'                      AS 'add_flag',
+					v.om_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('om', v.om_code, #{em_dty_code})     AS 'key',
+					v.om_nm                     AS 'dp_name'
+				FROM
+					v_store_list v 
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					v.om_code = om.om_code
+				WHERE
+					v.cm_code = #{cm_code}
+				<if test="om_code!=null">
+					AND v.om_code = #{om_code}
+				</if>
+					AND om.use_at = 'Y' 
+					AND om.delete_at = 'N'
+				GROUP BY v.om_code
+				ORDER  BY om.om_sort_ordr;
+			</when>
+			<when test="add_flag.equals('st')">
+				SELECT
+					'cg'                      AS 'add_flag',
+					cg_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					CONCAT('cg', cg_code, #{em_dty_code})     AS 'key',
+					cg_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					cm_code = #{cm_code}
+					AND om_code = #{om_code}
+				GROUP BY cg_code
+			</when>
+			<when test="add_flag.equals('cg')">
+				<!-- SELECT
+					'cg'                      AS 'add_flag',
+					cg_code, 
+					null                      AS 'me_code', 
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order', 
+					CONCAT('cg', cg_code, #{em_dty_code})     AS 'key',
+					cg_nm                     AS 'dp_name' 
+				FROM
+					v_store_list
+				WHERE
+					cg_code = #{cg_code}
+				GROUP BY cg_code
+				UNION -->
+				SELECT
+					'me'                      AS 'add_flag',
+					cg_code, 
+					me_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					me_nm                     AS 't_order',
+					CONCAT('me', cg_code, me_code, #{em_dty_code}) AS 'key',
+					me_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					cg_code = #{cg_code}
+					AND cm_code = #{cm_code}
+					AND om_code = #{om_code}
+				GROUP BY me_code, cg_code
+				ORDER BY t_order;
+			</when>
+			<when test="add_flag.equals('me')">
+				<!-- SELECT
+					'me'                      AS 'add_flag',
+					cg_code, 
+					me_code,
+					null                      AS 'sm_code',
+					#{em_dty_code}            AS 'em_dty_code',
+					null                      AS 't_order',
+					CONCAT('me', cg_code, me_code, #{em_dty_code}) AS 'key',
+					me_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					me_code = #{me_code}
+					AND cg_code = #{cg_code}
+				GROUP BY me_code, cg_code
+				UNION -->
+				SELECT
+					'sm'                      AS 'add_flag',
+					cg_code, 
+					me_code, 
+					sm_code, 
+					#{em_dty_code}            AS 'em_dty_code',
+					sm_nm                     AS 't_order',
+					CONCAT('sm', sm_code, #{em_dty_code})     AS 'key',
+					sm_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					me_code = #{me_code}
+					AND cg_code = #{cg_code}
+					AND cm_code = #{cm_code}
+					AND om_code = #{om_code}
+				ORDER BY t_order;
+			</when>
+			<when test="add_flag.equals('sm')">
+				<!-- SELECT
+					'sm'                      AS 'add_flag',
+					null                      AS om_code,
+					null		              AS tm_code,
+					null        	          AS em_code,
+					#{em_dty_code}            AS 'em_dty_code',
+					cg_code, 
+					me_code, 
+					sm_code, 
+					0                         AS 't_order',
+					CONCAT('sm', sm_code, #{em_dty_code})     AS 'key',
+					sm_nm                     AS 'dp_name'
+				FROM
+					v_store_list
+				WHERE
+					sm_code = #{sm_code}
+				UNION -->
+				SELECT
+					'em'                      AS add_flag,
+					em.bhf_code               AS om_code,
+					em.team_code              AS tm_code,
+					em.em_no                  AS em_code,
+					em.em_dty_code,
+					v.cg_code, 
+					v.me_code, 
+					v.sm_code, 
+					CASE em.em_dty_code WHEN "0000000009" THEN 1 WHEN "0000000008" THEN 2 WHEN "0000000006" THEN 3 ELSE 4 END
+					                          AS 't_order',
+					CONCAT('em', em.em_no)    AS 'key',
+					CONCAT("[", om.om_nm, " ", CASE em.em_dty_code WHEN "0000000006" THEN "고정" WHEN "0000000007" THEN "순회" WHEN "0000000008" THEN "팀장" WHEN "0000000009" THEN "관리자" END, "] ", em.em_nm)
+					                          AS 'dp_name'
+				FROM
+					v_store_list v
+				LEFT OUTER JOIN
+					tb_str_empl se
+				ON
+					se.sm_code = v.sm_code
+					AND se.delete_at = 'N'
+				LEFT OUTER JOIN 
+					tb_empl_manage em
+				ON
+					em.em_no = se.em_no
+					AND em.use_at = 'Y'
+					AND em.delete_at = 'N'
+				LEFT OUTER JOIN
+					tb_orgnzt_manage om
+				ON
+					em.team_code = om.om_code
+				WHERE
+					v.sm_code = #{sm_code}
+					AND v.cm_code = #{cm_code}
+					AND v.om_code = #{om_code}
+				<if test="!em_dty_code.equals('')">
+					AND em.em_dty_code = #{em_dty_code}
+				</if>
+				ORDER BY t_order, dp_name
+			</when>
+		</choose>
+    </select>
+    
+    <!-- 171020 kmh -->
+	<select id="receiverList" resultType="com.dasa.communication.vo.ReceiverVo" parameterType="String" >
+		select 
+			brt_code as cm_code
+			,NULL as om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('or', fix_round) as 'key'
+			,CONCAT('조직전체', CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'or'
+		union
+		select 
+			NULL as cm_code
+			,brt_code as om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('om', brt_code, fix_round) as 'key'
+			,CONCAT(o.om_nm, CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			tb_orgnzt_manage o
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'om'
+			and b.brt_code = o.om_code
+		union
+		select 
+			NULL as cm_code
+			,b.om_code
+			,brt_code as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('tm', brt_code, fix_round) as 'key'
+			,CONCAT(o.om_nm, CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			tb_orgnzt_manage o
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'tm'
+			and b.brt_code = o.om_code
+		union
+		select 
+			NULL as cm_code
+			,b.om_code
+			,NULL as tm_code
+			,brt_code as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('em', brt_code) as 'key'
+			,CONCAT("[", o.om_nm, " ", CASE e.em_dty_code WHEN "0000000006" THEN "고정" WHEN "0000000007" THEN "순회" WHEN "0000000008" THEN "팀장" WHEN "0000000009" THEN "관리자" END, "] ", e.em_nm) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			tb_empl_manage e,
+			tb_orgnzt_manage o
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'em'
+			and b.brt_code = e.em_no
+			and e.team_code = o.om_code
+		union
+		select 
+			NULL as cm_code
+			,brt_code as om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('st', brt_code, fix_round) as 'key'
+			,CONCAT(
+				case when brt_code ='000' then '전지점'
+				  else (select o.om_nm from tb_orgnzt_manage o where b.brt_code = o.om_code)
+			    end
+				, ' 전체매장', CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'st'
+		union
+		select 
+			NULL as cm_code
+			,b.om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,brt_code as cg_code
+			,NULL as me_code
+			,NULL as sm_code
+			,CONCAT('cg', brt_code, fix_round) as 'key'
+			,CONCAT(v.cg_nm, CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			v_store_list v
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'cg'
+		/*	and b.om_code = v.om_code */
+			and b.brt_code = v.cg_code
+		group by b.brt_code
+		union
+		select 
+			NULL as cm_code
+			,b.om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,b.cg_code
+			,brt_code as me_code
+			,NULL as sm_code
+			,CONCAT('me', b.cg_code, brt_code, fix_round) as 'key'
+			,CONCAT(v.me_nm, CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			v_store_list v
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'me'
+		/*	and b.om_code = v.om_code */
+			and b.cg_code = v.cg_code
+			and b.brt_code = v.me_code
+		group by b.brt_code
+		union
+		select 
+			NULL as cm_code
+			,b.om_code
+			,NULL as tm_code
+			,NULL as em_code
+			,fix_round as em_dty_code
+			,NULL as cg_code
+			,NULL as me_code
+			,brt_code as sm_code
+			,CONCAT('sm', brt_code, fix_round) as 'key'
+			,CONCAT(v.sm_nm, CASE fix_round WHEN '0000000006' THEN '_[고정]' WHEN '0000000007' THEN '_[순회]' ELSE '' END) as dp_name
+			,brt_flag as add_flag
+		from
+			tb_bbs_receiver_target b,
+			v_store_list v
+		where
+			bm_innb = #{bm_innb}
+			and brt_flag = 'sm'
+			and b.brt_code = v.sm_code
+	</select>
+	
+    <insert id="receiverInsert" parameterType="map" ><!-- // 171019 kmh 수신자 -->
+        INSERT INTO
+        tb_bbs_receiver_target (
+          <!-- BT_INNB -->
+          BM_INNB
+        , BRT_FLAG
+        , FIX_ROUND
+        , BRT_CODE
+        , OM_CODE
+        , CG_CODE
+        )
+        VALUES (
+          <!-- BT_INNB_SEQ.NEXTVAL  -->
+          #{bm_innb}
+        , #{add_flag}
+        , #{em_dty_code}
+    <choose>
+      <when test="add_flag.equals('or')"> <!-- 조직도 전체 -->
+        , #{cm_code}
+        , NULL
+        , NULL
+      </when>
+      <when test="add_flag.equals('om')"> <!-- 지점 전체 -->
+        , #{om_code}
+        , #{om_code}
+        , NULL
+      </when>
+      <when test="add_flag.equals('tm')"> <!-- 팀 전체 -->
+        , #{tm_code}
+        , #{om_code}
+        , NULL
+      </when>
+      <when test="add_flag.equals('em')"> <!-- 사원 -->
+        , #{em_code}
+        , #{om_code}
+        , NULL
+      </when>
+      <when test="add_flag.equals('st')"> <!-- 지점 전체매장 전체 -->
+        , #{om_code}
+        , #{om_code}
+        , NULL
+      </when>
+      <when test="add_flag.equals('cg')"> <!-- 지점 고객그룹 전체 -->
+        , #{cg_code}
+        , #{om_code}
+        , NULL
+      </when>
+      <when test="add_flag.equals('me')"> <!-- 지점 관리업체 전체 -->
+        , #{me_code}
+        , #{om_code}
+        , #{cg_code}
+      </when>
+      <when test="add_flag.equals('sm')"> <!-- 지점 매장 전체 -->
+        , #{sm_code}
+        , #{om_code}
+        , NULL
+      </when>
+    </choose>        
+        )
+    </insert>
+    
+    <delete id="targetDelete" parameterType="String" ><!-- // 171019 kmh 수신자 -->
+     DELETE
+         FROM tb_bbs_target
+      WHERE BM_INNB = #{bm_innb};
+    </delete>
+    
+    <delete id="receiverDelete" parameterType="String" ><!-- // 171019 kmh 수신자 -->
+     DELETE
+         FROM tb_bbs_receiver_target
+      WHERE BM_INNB = #{bm_innb};
+    </delete>
+	
+</mapper>

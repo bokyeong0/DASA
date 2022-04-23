@@ -1,0 +1,21 @@
+[{
+    "child_cnt": "5",
+    "drc_innb": "6",
+    "drcc_c_code": "0000000056",
+    "drcc_c_code_nm": "원두머신 청결 및 머신 기본사항 점검",
+    "drcc_innb": "6",
+    "drcci_c_code_nm": "원두호퍼 상태",
+    "drcci_c_desc": "원두호퍼 내/외부 청결 상태 확인",
+    "drcci_innb": "6",
+    "drcci_state": "3"
+},{
+    "child_cnt": "5",
+    "drc_innb": "6",
+    "drcc_c_code": "0000000056",
+    "drcc_c_code_nm": "원두머신 청결 및 머신 기본사항 점검",
+    "drcc_innb": "6",
+    "drcci_c_code_nm": "원두호퍼 상태",
+    "drcci_c_desc": "원두호퍼 내/외부 청결 상태 확인",
+    "drcci_innb": "6",
+    "drcci_state": "3"
+}]

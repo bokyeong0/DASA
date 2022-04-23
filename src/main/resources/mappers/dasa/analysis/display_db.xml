@@ -1,0 +1,1669 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="display">
+    <select id="displayList" resultType="com.dasa.analysis.vo.DisPlayVo">
+          select d_innb
+          	   , d_name
+          	   , rnd_code
+          	   , fixing_code
+          	   , rnd_child_code
+          	   , fixing_child_code
+          	from tb_display 
+          	where delete_at = 'N'
+    </select>
+    
+    <select id="displayPrdList" parameterType="com.dasa.analysis.vo.DisPlayVo" resultType="com.dasa.analysis.vo.DisPlayVo">
+          select max(oi_nm) oi_nm
+			   , oi_nick_nm
+			   , OI.oi_sort_ordr
+			   , ifnull(DP.collect_at,'N') AS collect_at
+  			   , ifnull(DP.dp_innb ,'') AS dp_innb
+		    from tb_option_item OI
+		    left OUTER JOIN tb_display_prdlst DP
+			  ON OI.oi_nick_nm = DP.oi_nick_name
+		  	 and DP.d_innb = #{d_innb}
+		   where oi_type IN (#{fixing_code}, #{rnd_code})  
+		     and OI.use_at ='Y'
+		   group by oi_nick_nm
+		   ORDER BY OI.oi_sort_ordr
+    </select>
+    
+    <insert id="displayPrdSave" parameterType="map" >
+		insert into tb_display_prdlst(
+			  dp_innb
+			, d_innb
+			, oi_nick_name
+			, collect_at
+			, delete_at
+			, regist_man
+			, updt_man
+			, regist_de
+			, updt_de
+		)
+		values(
+			  #{dp_innb, jdbcType=NUMERIC}
+			, #{d_innb, jdbcType=NUMERIC}
+			, #{oi_nick_name}
+			, #{collect_at}
+			, 'N'
+			, #{em_no}
+			, #{em_no}
+			, now()
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE     
+			  collect_at = #{collect_at}
+			, updt_de = now()
+	</insert>
+	
+    <select id="displayPrdItemList" parameterType="com.dasa.analysis.vo.DisPlayVo" resultType="com.dasa.analysis.vo.DisPlayVo">
+          select max(oi_nm) oi_nm
+			   , oi_nick_nm
+			   , OI.oi_sort_ordr
+			   , ifnull(DPI.collect_at,'N') AS collect_at
+  			   , ifnull(DPI.dpi_innb ,'') AS dpi_innb
+        	   , OI.oi_type
+		    from tb_option_item OI
+		    left OUTER JOIN tb_display_prdlst_item DPI
+			  ON OI.oi_nick_nm = DPI.oi_nick_name
+			  AND DPI.dp_innb = #{dp_innb}
+		   where oi_type IN (#{fixing_code}, #{rnd_code}) 
+		     and OI.use_at ='Y'
+		   group by oi_nick_nm
+		   ORDER BY OI.oi_sort_ordr
+    </select>
+
+	<delete id="displayDeleteList" parameterType="String"  >
+		DELETE FROM tb_display_arr WHERE base_de =#{base_de} 
+	</delete>
+	
+	<insert id="displayPrdItemSave" parameterType="map" >
+		insert into tb_display_prdlst_item(
+			  dpi_innb
+			, dp_innb
+			, oi_nick_name
+			, collect_at
+			, delete_at
+			, regist_man
+			, updt_man
+			, regist_de
+			, updt_de
+		)
+		values(
+			  #{dpi_innb, jdbcType=NUMERIC}
+			, #{dp_innb, jdbcType=NUMERIC}
+			, #{oi_nick_name}
+			, #{collect_at}
+			, 'N'
+			, #{em_no}
+			, #{em_no}
+			, now()
+			, now()
+		)
+		ON DUPLICATE KEY UPDATE     
+			  collect_at = #{collect_at}
+			, updt_de = now()
+	</insert>
+	
+	<!-- ======================================== 사원별 진열( 사용하지 않음 ) ============================ -->
+	<select id="displayPrdItemColumnCheck1" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_dasa_arr where field = #{colunm}
+	</select>
+	<update id="displayPrdItemColumnAdd1" parameterType="map" >
+		ALTER TABLE tb_display_dasa_arr ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- ======================================== 보조진열 ================================================ -->
+	<select id="displayPrdItemColumnCheck3" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_dasa_big where field = #{colunm}
+	</select>
+	<update id="displayPrdItemColumnAdd3" parameterType="map" >
+		ALTER TABLE tb_display_dasa_big ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- ======================================== 진열 ==================================================== -->
+	<select id="displayPrdItemColumnCheck4" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_arr where field = #{colunm}
+	</select>
+	<update id="displayPrdItemColumnAdd4" parameterType="map" >
+		ALTER TABLE tb_display_arr ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- ======================================== 보조진열 ================================================= -->
+	<select id="displayPrdItemColumnCheck6" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_big where field = #{colunm}
+	</select>
+	<update id="displayPrdItemColumnAdd6" parameterType="map" >
+		ALTER TABLE tb_display_big ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- ======================================== 취급 ===================================================== -->
+	<select id="displayPrdColumnCheck5" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_trt where field = #{colunm}
+	</select>
+	<update id="displayPrdColumnAdd5" parameterType="map" >
+		ALTER TABLE tb_display_trt ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- ======================================== PD매대 ==================================================== -->
+	<select id="displayPrdItemColumnCheck7" parameterType="String"  resultType="map">
+		SHOW COLUMNS FROM tb_display_pd where field = #{colunm}
+	</select>
+	<update id="displayPrdItemColumnAdd7" parameterType="map" >
+		ALTER TABLE tb_display_pd ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+
+	<!-- 신규 필드 저장 -->
+	<insert id="displayPrdSaveInsert" parameterType="map"  useGeneratedKeys="true" >
+		insert into tb_display_prdlst(
+			  d_innb
+			, oi_nick_name
+			, collect_at
+			, delete_at
+			, regist_man
+			, updt_man
+			, regist_de
+			, updt_de
+		)
+		values(
+			  #{d_innb, jdbcType=NUMERIC}
+			, #{oi_nick_name}
+			, #{collect_at}
+			, 'N'
+			, #{em_no}
+			, #{em_no}
+			, now()
+			, now()
+		)
+		<selectKey resultType="String" keyProperty="dp_innb" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+	
+	<!-- 신규 필드 수정 -->
+    <insert id="displayPrdSaveUpdate" parameterType="map" >
+		update tb_display_prdlst
+		   set collect_at = #{collect_at}
+			, updt_de = now()
+		where dp_innb = #{dp_innb}
+	</insert>
+	
+	<!-- 신규 필드 아이템 저장 -->
+	<insert id="displayPrdItemSaveInsert" parameterType="map"  useGeneratedKeys="true" >
+		insert into tb_display_prdlst_item(
+			  dp_innb
+			, oi_nick_name
+			, collect_at
+			, delete_at
+			, regist_man
+			, updt_man
+			, regist_de
+			, updt_de
+		)
+		values(
+			  #{dp_innb, jdbcType=NUMERIC}
+			, #{oi_nick_name}
+			, #{collect_at}
+			, 'N'
+			, #{em_no}
+			, #{em_no}
+			, now()
+			, now()
+		)
+		<selectKey resultType="String" keyProperty="dpi_innb" order="AFTER">
+			SELECT LAST_INSERT_ID()
+		</selectKey>
+	</insert>
+	
+	<!-- 신규 필드 아이템 수정 -->
+	<insert id="displayPrdItemSaveUpdate" parameterType="map" >
+		update tb_display_prdlst_item
+		   set collect_at = #{collect_at}
+			, updt_de = now()
+		where dpi_innb = #{dpi_innb}
+	</insert>
+	
+	<!-- 신규 배치 항목 조회 -->
+		<!-- SELECT DP.dp_innb AS group_id 
+		     , DP.oi_nick_name AS group_nm 
+		     , DPI.dpi_innb AS item_id 
+		     , DPI.oi_nick_name AS item_nm 
+		  FROM tb_display_prdlst DP
+		  LEFT OUTER JOIN tb_display_prdlst_item DPI
+		    ON DP.dp_innb = DPI.dp_innb
+		   AND DPI.collect_at='Y'
+		 WHERE DP.d_innb = #{d_innb}
+		   AND DP.collect_at = 'Y'
+       	   AND DP.delete_at = 'N'
+       	   AND DPI.delete_at = 'N'
+       	 ORDER BY group_id, item_id; 
+    -->
+    
+	<select id="displayColumnList" parameterType="String"  resultType="com.dasa.analysis.vo.DisPlayColunmVo">
+	<!-- A20170228 kks PD매대 분석통계> 분석통계관리 동기화 반영 -->
+	  <choose>
+	  	 <when test=' _parameter != null and _parameter.equals("7")'>	
+						SELECT group_id, group_nm
+						      , item_id,  item_nm
+						  from (
+						select pdi.dp_innb group_id, pdi.oi_nick_name group_nm, pdi.collect_at, pdi.delete_at, pdi.oi_nm, pdi.oi_nick_nm, pdi.oi_sort_ordr
+						     , dpi.oi_nick_name item_nm, dpi.collect_at dpi_collect_at, dpi.delete_at dpi_delete_at, dpi.dpi_innb item_id, pdi.default_at
+						     , case when dpi.oi_nick_name = '스텐딩'   then 1
+						            when dpi.oi_nick_name = '걸이형'   then 2
+						            when dpi.oi_nick_name = '반구형'   then 3
+						            when dpi.oi_nick_name = '트레이'   then 4
+						            when dpi.oi_nick_name = '조닝매대' then 5
+						            when dpi.oi_nick_name = '기타'     then 6
+						            else 9 end sort_dp
+						  from (
+									select dp.dp_innb, dp.oi_nick_name, dp.collect_at, op.oi_nm, op.oi_nick_nm, op.oi_sort_ordr, op.delete_at, op.default_at
+									  from tb_display_prdlst         dp
+									  inner join tb_option_item      op
+									               on dp.oi_nick_name = op.oi_nm
+									              and op.oi_type     in ('0000000376','0000000039')   <!-- PD매대설정 품목설정_순회MD(0000000376), PD매대설정 품목설정_고정MD(0000000039) -->
+									              and op.use_at       = 'Y'
+									              and op.delete_at    = 'N'
+									 where dp.d_innb = #{_parameter}
+									group by dp.dp_innb
+									order by op.oi_sort_ordr
+						)  pdi
+						inner join tb_display_prdlst_item dpi
+						        on pdi.dp_innb    = dpi.dp_innb
+						       and dpi.collect_at = 'Y'
+						       and dpi.delete_at  = 'N'
+						order by oi_sort_ordr, sort_dp, dpi_innb
+						) t
+						order by t.oi_sort_ordr, t.sort_dp, t.item_id	
+       	 </when>
+	<!-- A20170405 kks 분석통계> 보조진열> 관리업체별 보조진열현황 동기화 반영 -->
+	  	 <when test=' _parameter != null and _parameter.equals("6")'>
+						 select dpii.dp_innb            group_id
+						      , dpii.oi_nick_name       group_nm
+						      , dpii.dpi_innb           item_id
+						      , dpii.dpi_oi_nick_name   item_nm
+						   from tb_option_item oi
+						 inner join (  select dp.dp_innb, dp.d_innb, dp.oi_nick_name, dpi.dpi_innb, dpi.oi_nick_name dpi_oi_nick_name
+											  from tb_display_prdlst dp
+											  inner join tb_display_prdlst_item dpi
+											          on dp.dp_innb = dpi.dp_innb
+											         and dpi.collect_at = 'Y'
+											         and dpi.delete_at  = 'N'
+											 where dp.d_innb     = #{_parameter}         <!-- /* 보조진열품목(6) */ -->
+											   and dp.collect_at = 'Y'
+											   and dp.delete_at  = 'N'
+											group by dp.dp_innb, dp.oi_nick_name, dpi.oi_nick_name
+											 ) dpii
+						          on (oi.oi_nick_nm = dpii.oi_nick_name or oi.oi_nick_nm = dpii.oi_nick_name)
+									 <!-- /* 보조진열현황 품목설정_고정MD(0000000037), 보조진열현황 품목설정_순회MD(0000000071), 보조진열현황 매대설정_고정MD(0000000036), 보조진열 현황 매대설정_순회MD(0000000070) */ -->
+						  where oi.oi_type    in ('0000000037', '0000000071', '0000000036', '0000000070')
+						    and oi.default_at  = 'Y'
+						    and oi.use_at      = 'Y'
+						    and oi.delete_at   = 'N'
+						group by dpii.oi_nick_name, dpii.dpi_oi_nick_name
+						order by oi.oi_sort_ordr, dpii.dpi_innb
+       	 </when>
+       	 <otherwise>		
+       	 <!-- 진열품목(4) -->
+			       	 SELECT group_id
+						  , group_nm
+						  , item_id
+						  , item_nm
+						  from
+						 (SELECT DP.dp_innb AS group_id 
+						         ,CASE DP.dp_innb when '54' then '35_1' else   DP.dp_innb end AS dp_innb_order
+								     , DP.oi_nick_name AS group_nm 
+								     , DPI.dpi_innb AS item_id 
+								     , DPI.oi_nick_name AS item_nm 
+								  FROM tb_display_prdlst DP
+								  LEFT OUTER JOIN tb_display_prdlst_item DPI
+								    ON DP.dp_innb = DPI.dp_innb
+								   AND DPI.collect_at='Y'
+								 WHERE DP.d_innb = #{_parameter}
+								   AND DP.collect_at = 'Y'
+						       	   AND DP.delete_at = 'N'
+						       	   AND DPI.delete_at = 'N') a
+						       	 ORDER BY dp_innb_order, item_id
+       	 </otherwise>
+      </choose>			       	 
+	</select>
+	
+	<!-- 신규 배치 항목 조회 -->
+	<!-- 
+	<select id="displayMainColumnList" parameterType="String"  resultType="com.dasa.analysis.vo.DisPlayColunmVo">
+		select DP.dp_innb AS group_id 
+  			 , oi_nick_nm AS group_nm 
+		    from tb_option_item OI
+		    left OUTER JOIN tb_display_prdlst DP
+			  ON OI.oi_nick_nm = DP.oi_nick_name
+		  	 and DP.d_innb = #{d_innb}
+		   where oi_type IN ('0000000067', '0000000072')  
+		     and OI.use_at ='Y'
+		     AND DP.collect_at = 'Y' 
+		   group by oi_nick_nm
+		   ORDER BY OI.oi_sort_ordr
+	</select> 
+	-->
+	
+	<!-- 신규 배치 항목 조회 -->
+	<select id="displayMainColumnList" parameterType="String"  resultType="com.dasa.analysis.vo.DisPlayColunmVo">
+	<!-- M20161207 k2s 조건분기 추가 -->
+	  <choose>
+	  	 <when test=' _parameter != null and _parameter.equals("5")'>
+			SELECT DP.dp_innb      AS group_id 
+			     , DP.oi_nick_name AS group_nm 
+			  FROM       tb_display_prdlst DP
+			  INNER JOIN tb_option_item    OI
+			          ON DP.oi_nick_name = OI.oi_nick_nm
+			         AND OI.use_at = 'Y'
+			         AND OI.oi_type IN ('0000000067', '0000000072') <!-- A20170227 kks 취급품목 조건 추가 취급품목설정_고정MD(0000000067) 취급품목설정_순회MD(0000000072)-->  
+			 WHERE DP.d_innb     = #{_parameter}
+			   AND DP.collect_at = 'Y'
+			   AND DP.delete_at  = 'N'
+			GROUP BY DP.dp_innb
+			ORDER BY OI.oi_sort_ordr, DP.dp_innb	  
+       	 </when>
+       	 <otherwise>
+			SELECT DP.dp_innb      AS group_id 
+			     , DP.oi_nick_name AS group_nm 
+			  FROM tb_display_prdlst DP
+			 WHERE DP.d_innb     = #{_parameter}
+			   AND DP.collect_at = 'Y'
+	       	   AND DP.delete_at  = 'N'
+       	 </otherwise>
+      </choose>
+	</select> 
+	
+	<!-- 지점 코드 목록 조회 -->
+	<select id="displayOmList" resultType="String">
+		select om_code 
+		  from tb_orgnzt_manage
+		where om_orgnzt_se = '1'
+		and use_at = 'Y'
+		and delete_at = 'N'
+	</select>
+	
+	<!-- 신규 필드체크 -->
+	<select id="displayColumnCheck" parameterType="map"  resultType="map">
+		SHOW COLUMNS FROM ${table} where field = #{colunm}
+	</select>
+	
+	<!-- 신규 필드체크 등록 -->
+	<update id="displayPrdItemColumnAdd" parameterType="map" >
+		ALTER TABLE ${table} ADD COLUMN `${colunm}` VARCHAR(5) DEFAULT NULL
+	</update>
+	
+	<!-- 신규 배치 항목 조회 -->
+	<select id="displayViewColumnList" parameterType="String"  resultType="map">
+		SELECT DP.dp_innb AS group_id 
+		     , DP.oi_nick_name AS group_nm 
+		     , DPI.dpi_innb AS item_id 
+		     , DPI.oi_nick_name AS item_nm 
+		  FROM tb_display_prdlst DP
+		  LEFT OUTER JOIN tb_display_prdlst_item DPI
+		    ON DP.dp_innb = DPI.dp_innb
+		   AND DPI.collect_at='Y'
+		 WHERE DP.d_innb = #{d_innb}
+		   AND DPI.collect_at='Y'
+		   AND DP.collect_at = 'Y'
+       	   AND DP.delete_at = 'N'
+       	   AND DPI.delete_at = 'N'
+	</select>	
+	
+    <!-- ========================================== 관리업체별 진열률 start!!! ================================================= -->	
+	<!-- 진열률 -->
+	<select  id="displayArrListCnt"  parameterType="com.vertexid.vo.NaviVo" resultType="int">
+		SELECT count(*) cnt
+		FROM tb_display_arr
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>	   	 
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+	
+	<!-- 통계 진열률 리스트 -->
+	<select  id="displayArrBodyList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT da_innb
+			 , date_format(da_date,'%Y-%m-%d') da_date
+			 , cg_code
+			 , cg_nm
+			 , me_code
+			 , me_nm
+			 , sm_code
+			 , sm_nm 
+			 , em_nm
+			 , em_no
+			 , ifnull(sm_odr,'') AS sm_odr
+			 , base_de<foreach collection="columnArr" item="item">
+			 , ${item.colunm_id}_${item.group_id}_${item.item_id}
+			 , #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			 , #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id</foreach>
+		FROM tb_display_arr
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	    <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 통계 진열률 엑셀 -->
+	<select  id="displayArrBodyList_excel" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT b.da_innb
+			 , date_format(b.da_date,'%Y-%m-%d') da_date
+			 , b.cg_code
+			 , b.cg_nm
+			 , b.me_code
+			 , b.me_nm
+			 , b.sm_code
+			 , b.sm_nm  
+			 , ifnull(a.sm_sap_code, '') AS sm_sap_code
+			 <!-- , concat(sm_nm,' (',sm_code,')') AS sm_nm  -->
+			 , b.em_nm
+			 , b.em_no
+			 , ifnull(b.sm_odr,'') AS sm_odr
+			 , b.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+	        <!-- A20171226 k2s 코드포함, 비포함 구분 추가 -->
+            <if test="params != null and params.code_at!=null and !params.code_at.equals('')">
+            	<!-- A20171220 k2s 권역명, 지점명 추가-->	        
+		        , tc1.c_name    sm_area1_nm
+		        , tc2.c_name    sm_area2_nm
+		        , om.om_nm
+	        </if>
+		FROM            tb_display_arr b
+		   ,            tb_str_manage  a
+		<!-- A20171226 k2s 코드포함, 비포함 구분 추가 --> 
+		<if test="params != null and params.code_at!=null and !params.code_at.equals('')">
+			<!-- A20171220 k2s 권역명, 지점명 추가-->  
+			left outer join tb_code  tc1           
+			             on a.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on a.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on a.om_code   = om.om_code
+        </if>		             
+	   WHERE b.cm_code = #{cm_code}
+	     AND b.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND b.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND b.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     AND A.sm_code = B.sm_code
+	    <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND b.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND b.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND b.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND b.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND b.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND b.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND b.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND b.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(b.em_no,'1','') DESC, b.cg_nm,b.em_nm,b.me_nm,b.sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	
+	<!-- 통계 진열률 합계 리스트 -->
+	<select  id="displayArrSumList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT date_format(da_date,'%Y-%m-%d') da_date
+	   		<foreach collection="columnArr" item="item">
+	   			<choose>
+	   				<when test="item.colunm_id.equals('ent') ">
+					, TRUNCATE(SUM(${item.colunm_id}_${item.group_id}_${item.item_id}),0) AS ${item.colunm_id}_${item.group_id}_${item.item_id}
+	   				</when>
+	   				<otherwise>
+					, TRUNCATE(ROUND(AVG(${item.colunm_id}_${item.group_id}_${item.item_id}),1),0) AS ${item.colunm_id}_${item.group_id}_${item.item_id}
+	   				</otherwise>
+	   			</choose>
+	        </foreach>
+		FROM tb_display_arr
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>	   	 
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+    <!-- ========================================== 관리업체별 진열률 end!!! ================================================= -->	
+    
+    
+    <!-- ========================================== 관리업체별 보조진열현황 start!!! ========================================= -->	
+	<!-- 보조진열 -->
+	<select  id="displayBigListCnt"  parameterType="com.vertexid.vo.NaviVo" resultType="int">
+		SELECT count(*) cnt
+		FROM tb_display_big
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+		 AND cg_code != 'Z1'	   
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if> 
+		 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+	
+	<!-- 통계 보조진열 리스트 -->
+	<select  id="displayBigBodyList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT da_innb
+			 , date_format(da_date,'%Y-%m-%d') da_date
+			 , cg_code
+			 , cg_nm
+			 , me_code
+			 , me_nm
+			 , sm_code
+			 , sm_nm
+			 , em_nm
+			 , em_no
+			 , ifnull(sm_odr,'') AS sm_odr
+			 , base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+		FROM tb_display_big
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 통계 보조진열 엑셀 -->
+	<select  id="displayBigBodyList_excel" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT b.da_innb
+			 , date_format(b.da_date,'%Y-%m-%d') da_date
+			 , b.cg_code
+			 , b.cg_nm
+			 , b.me_code
+			 , b.me_nm
+			 , b.sm_code
+			 , b.sm_nm
+			 , ifnull(a.sm_sap_code, '') as sm_sap_code
+			 <!-- , concat(sm_nm,' (',sm_code,')') AS sm_nm -->
+			 , b.em_nm
+			 , b.em_no
+			 , ifnull(b.sm_odr,'') AS sm_odr
+			 , b.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+			<!-- A20171226 k2s 코드포함, 비포함 구분 추가 --> 
+			<if test="params != null and params.code_at!=null and !params.code_at.equals('')"> 
+	            <!-- A20171220 k2s 권역명, 지점명 추가-->	        
+		        , tc1.c_name    sm_area1_nm
+		        , tc2.c_name    sm_area2_nm
+		        , om.om_nm	        
+	        </if>
+		FROM            tb_display_big b
+		   ,            tb_str_manage  a
+		<!-- A20171226 k2s 코드포함, 비포함 구분 추가 --> 
+		<if test="params != null and params.code_at!=null and !params.code_at.equals('')">   
+			<!-- A20171220 k2s 권역명, 지점명 추가-->   
+			left outer join tb_code  tc1           
+			             on a.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on a.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on a.om_code   = om.om_code
+		</if>    
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE b.cm_code = #{cm_code}
+	     AND b.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND b.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND b.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     AND a.sm_code = b.sm_code
+	     <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND b.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND b.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND b.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND b.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND b.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND b.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND b.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(em_no,'1','') DESC, b.cg_nm,b.em_nm,b.me_nm ,b.sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 통계 보조진열 합계 리스트 -->
+	<select  id="displayBigSumList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT date_format(da_date,'%Y-%m-%d') da_date
+	   		<foreach collection="columnArr" item="item">
+				, TRUNCATE(SUM(${item.colunm_id}_${item.group_id}_${item.item_id}), 0) AS ${item.colunm_id}_${item.group_id}_${item.item_id}
+	        </foreach>
+		FROM tb_display_big
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+    <!-- ========================================== 관리업체 보조진열현황 end!!! ================================================= -->	
+	
+	
+    <!-- ========================================== 관리업체 PD매대현황 start!!! ================================================= -->	
+	<!-- 통계 PD매대 리스트 -->
+	<select  id="displayPdListCnt"  parameterType="com.vertexid.vo.NaviVo" resultType="int">
+		SELECT count(*) cnt
+		FROM tb_display_pd
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+	<select  id="displayPdBodyList" resultType="java.util.LinkedHashMap" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT da_innb
+			 , date_format(da_date,'%Y-%m-%d') da_date
+			 , cg_code
+			 , cg_nm
+			 , me_code
+			 , me_nm
+			 , sm_code
+			 , sm_nm
+			 , em_nm
+			 , em_no
+			 , ifnull(sm_odr,'') AS sm_odr
+			 , base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+		FROM tb_display_pd
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- PD매대 엑셀 -->
+	<select  id="displayPdBodyList_excel" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT b.da_innb
+			 , date_format(b.da_date,'%Y-%m-%d') da_date
+			 , b.cg_code
+			 , b.cg_nm
+			 , b.me_code
+			 , b.me_nm
+			 , b.sm_code
+			 , b.sm_nm 
+			 , ifnull(a.sm_sap_code, '') as sm_sap_code
+			 <!-- , concat(sm_nm,' (',sm_code,')') AS sm_nm -->
+			 , b.em_nm
+			 , b.em_no
+			 , ifnull(b.sm_odr,'') AS sm_odr
+			 , b.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+			<!-- A20171226 k2s 코드포함, 비포함 구분 추가 --> 
+			<if test="params != null and params.code_at!=null and !params.code_at.equals('')">	        
+	            <!-- A20171220 k2s 권역명, 지점명 추가-->	        
+		        , tc1.c_name    sm_area1_nm
+		        , tc2.c_name    sm_area2_nm
+		        , om.om_nm
+			</if>
+		FROM            tb_display_pd b
+		   ,            tb_str_manage a
+		<!-- A20171226 k2s 코드포함, 비포함 구분 추가 --> 
+		<if test="params != null and params.code_at!=null and !params.code_at.equals('')">		   
+			<!-- A20171220 k2s 권역명, 지점명 추가-->   
+			left outer join tb_code  tc1           
+			             on a.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on a.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on a.om_code   = om.om_code
+	    </if>
+	   WHERE b.cm_code = #{cm_code}
+	     AND b.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND b.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND b.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     AND a.sm_code = b.sm_code
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND b.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND b.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND b.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND b.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND b.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND b.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND b.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND b.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(b.em_no,'1','') DESC, b.cg_nm,b.em_nm,b.me_nm ,b.sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 통계 PD매대 합계 리스트 -->
+	<select  id="displayPdSumList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT date_format(da_date,'%Y-%m-%d') da_date
+	   		<foreach collection="columnArr" item="item">
+				, TRUNCATE(SUM(${item.colunm_id}_${item.group_id}_${item.item_id}), 0) AS ${item.colunm_id}_${item.group_id}_${item.item_id}
+	        </foreach>
+		FROM tb_display_pd
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+    <!-- ========================================== 관리업체 PD매대현황 end!!! ================================================= -->
+	
+	
+	<!-- ========================================== 관리업체 취급율 start!!! ================================================= -->
+	<!-- 통계 TRT매대 리스트 -->
+	<select  id="displayTrtListCnt"  parameterType="com.vertexid.vo.NaviVo" resultType="int">
+		SELECT count(*) cnt
+		FROM tb_display_trt
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+	
+	<!-- 취급률통계 -->
+	<select  id="displayTrtBodyList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT da_innb
+			 , date_format(da_date,'%Y-%m-%d') da_date
+			 , cg_code
+			 , cg_nm
+			 , me_code
+			 , me_nm
+			 , sm_code
+			 , sm_nm
+			 , em_nm
+			 , em_no
+			 , ifnull(sm_odr,'') AS sm_odr
+			 , base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.column_id}_${item.group_id}
+	        </foreach>
+		FROM tb_display_trt
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 취급율 엑셀 리스트 -->
+	<select  id="displayTrtBodyList_excel" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT b.da_innb
+			 , date_format(b.da_date,'%Y-%m-%d') da_date
+			 , b.cg_code
+			 , b.cg_nm
+			 , b.me_code
+			 , b.me_nm
+			 , b.sm_code
+			 , b.sm_nm  
+			 , ifnull(a.sm_sap_code, '') AS sm_sap_code
+			 <!-- , concat(sm_nm,' (',sm_code,')') AS sm_nm -->
+			 , b.em_nm
+			 , b.em_no
+			 , ifnull(b.sm_odr,'') AS sm_odr
+			 , b.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}
+	        </foreach>
+	        <!-- A20171226 k2s 코드포함, 비포함 구분 추가 -->
+            <if test="params != null and params.code_at!=null and !params.code_at.equals('')">	        
+            	<!-- A20171220 k2s 권역명, 지점명 추가-->	        
+		        , tc1.c_name    sm_area1_nm
+		        , tc2.c_name    sm_area2_nm
+		        , om.om_nm
+	        </if>
+		FROM            tb_display_trt b
+		   ,            tb_str_manage  a
+		<!-- A20171226 k2s 코드포함, 비포함 구분 추가 -->
+		<if test="params != null and params.code_at!=null and !params.code_at.equals('')">		   
+			<!-- A20171220 k2s 권역명, 지점명 추가-->
+			left outer join tb_code  tc1           
+			             on a.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on a.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on a.om_code   = om.om_code
+        </if>		             
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE b.cm_code = #{cm_code}
+	     AND b.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND b.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND b.da_date like concat(#{params.da_date}, '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+	     AND A.sm_code = B.sm_code
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND b.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND b.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND b.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND b.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND b.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND b.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND b.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND b.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(b.em_no,'1','') DESC, b.cg_nm,b.em_nm,b.me_nm,b.sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+	<!-- 통계 TRT매대 합계 리스트 -->
+	<select  id="displayTrtSumList" resultType="map" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT date_format(da_date,'%Y-%m-%d') da_date
+	   		<foreach collection="columnArr" item="item">
+				, TRUNCATE(ifnull(SUM(ent_${item.group_id}),0),0) AS ent_${item.group_id} <!-- M20170106 kks ifnull처리 수정 -->
+	        </foreach>
+		FROM tb_display_trt
+<!-- 	   WHERE da_date = date_format(now(),'%Y-%m-%d') -->
+	   WHERE cm_code = #{cm_code}
+	     AND cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da_date like concat(#{params.da_date}, '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	</select>
+	<!-- ========================================== 관리업체 취급율 end!!! ================================================= -->
+	
+	<select id="cvsCheckList100" parameterType="com.vertexid.vo.NaviVo" resultType="map" >
+			SELECT
+					tt.em_nm as regist_man
+					, tt.sm_nm
+					, tt.sm_code
+					, tt.om_code
+					, tt.cm_code
+					, tt.base_de
+					, tt.plan_de
+					, tt.drcci_state
+					, tt.drcc_c_code
+					, tt.drcc_c_code_nm
+					, tt.drcci_c_code
+					, tt.drcci_c_code_nm
+			FROM(
+					SELECT    t.regist_man
+								, (SELECT sm.sm_nm FROM tb_str_manage sm WHERE sm.sm_code = t.sm_code) AS sm_nm
+								, t.sm_code
+								, t.om_code
+								, t.cm_code
+								, DATE_FORMAT(t.base_de, '%Y-%m-%d') AS base_de
+								, DATE_FORMAT(t.plan_de, '%Y-%m-%d') AS plan_de
+								, REPLACE(REPLACE(REPLACE(REPLACE(t.drcci_state, '1', "양호"), '2', '보통'),'3','불량'),'0','-') AS drcci_state
+								, t.drcc_c_code
+								, t.drcc_c_code_nm
+								, t.drcci_c_code
+								, t.drcci_c_code_nm
+								, em.team_code
+								, em.em_nm
+					FROM(
+							SELECT b.regist_man
+									, b.sm_code
+									, b.om_code
+									, a.cm_code
+									, a.base_de
+									, a.plan_de
+									, REPLACE(GROUP_CONCAT(IFNULL(b.drcci_state,0) ORDER BY b.drcci_innb, a.drc_innb, a.drcc_innb), ',','||') AS drcci_state
+									, REPLACE(GROUP_CONCAT(a.drcc_c_code           ORDER BY b.drcci_innb, a.drc_innb, a.drcc_innb), ',','||') AS drcc_c_code
+									, REPLACE(GROUP_CONCAT(a.drcc_c_code_nm        ORDER BY b.drcci_innb, a.drc_innb, a.drcc_innb), ',','||') AS drcc_c_code_nm
+									, REPLACE(GROUP_CONCAT(b.drcci_c_code ORDER BY b.drcci_innb, a.drc_innb, a.drcc_innb), ',','||') AS drcci_c_code
+									, REPLACE(REPLACE(GROUP_CONCAT(REPLACE(b.drcci_c_code_nm, ',','/')ORDER BY b.drcci_innb, a.drc_innb, a.drcc_innb), ',','||'),'/',',') AS drcci_c_code_nm
+							FROM tb_diary_rnd_cvs_check a
+							LEFT OUTER
+							JOIN tb_diary_rnd_cvs_check_item b 
+							  ON a.drcc_innb = b.drcc_innb 
+							  AND a.drc_innb = b.drc_innb
+							WHERE 1=1 
+							<if test="params.startDate != null and !params.startDate.equals('') ">
+								AND a.base_de BETWEEN #{params.startDate} AND #{params.endDate}
+							</if>
+							GROUP BY b.regist_man, b.sm_code, b.om_code, a.cm_code, a.base_de, a.plan_de
+					) t
+					JOIN tb_empl_manage em 
+					  ON em.em_no = t.regist_man
+				)tt
+			WHERE tt.cm_code = #{cm_code}
+			<if test="params.emNm != null and !params.emNm.equals('') ">
+				AND   tt.em_nm LIKE '%${params.emNm}%'
+			</if>
+			<if test="params.omCode != null and !params.omCode.equals('') ">
+				AND   tt.om_code = #{params.omCode}
+			</if>
+			<if test="params.tmCode != null and !params.tmCode.equals('') ">
+				AND   tt.team_code = #{params.tmCode}
+			</if>
+			<if test="params.smNm != null and !params.smNm.equals('') ">
+				AND   tt.sm_nm LIKE '%${params.smNm}%'	
+			</if>
+	</select>
+
+<!-- 관리업체별 PD매대현황(Grid버젼) A20180125 k2s -->
+	<select  id="displayPdBodyGridList" resultType="java.util.LinkedHashMap" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT dp.da_innb
+			 , date_format(dp.da_date,'%Y-%m-%d') da_date
+			 , dp.cg_code
+			 , dp.cg_nm
+			 , dp.me_code
+			 , dp.me_nm
+			 , dp.sm_code
+			 , dp.sm_nm
+			 , dp.em_nm
+			 , dp.em_no
+			 , ifnull(dp.sm_odr,'') AS sm_odr
+			 , dp.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id}  AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+	        , tc1.c_name    sm_area1_nm
+	        , tc2.c_name    sm_area2_nm
+	        , om.om_nm
+	        , tm.om_nm      tm_nm	        
+		FROM                tb_display_pd dp
+			<!-- A20180125 k2s 권역명, 지점명 추가-->   
+		         inner join tb_str_manage sm
+		                 on dp.sm_code = sm.sm_code
+			left outer join tb_code  tc1           
+			             on dp.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on dp.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on dp.om_code   = om.om_code
+			left outer join (select em.em_no, em.team_code, em.bhf_code, om.om_parent_no, om.om_nm
+									 from       (select s.em_no, s.em_nm, s.team_code, s.bhf_code 
+											       from tb_empl_manage  s 
+												  where use_at = 'Y' and delete_at = 'N') em
+									  inner join (select s.om_code, s.cm_code, s.om_parent_no, s.om_nm, s.om_sort_ordr, s.om_orgnzt_se
+									                from tb_orgnzt_manage s
+									               where om_parent_no is not null and om_orgnzt_se = '2' and use_at = 'Y' and delete_at = 'N') om
+									          on em.team_code  = om.om_code		
+			                ) tm
+                      on dp.em_no = tm.em_no			             
+	   WHERE dp.cm_code = #{cm_code}
+	     AND dp.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND dp.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND dp.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND dp.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND dp.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND dp.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND dp.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND dp.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND dp.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND dp.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND dp.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(dp.em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+<!-- 관리업체별 보조진열현황(Grid버젼) A20180130 k2s -->	
+	<select  id="displayBigBodyGridList" resultType="java.util.LinkedHashMap" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT db.da_innb
+			 , date_format(db.da_date,'%Y-%m-%d') da_date
+			 , db.cg_code
+			 , db.cg_nm
+			 , db.me_code
+			 , db.me_nm
+			 , db.sm_code
+			 , db.sm_nm
+			 , db.em_nm
+			 , db.em_no
+			 , ifnull(db.sm_odr,'') AS sm_odr
+			 , db.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id}  AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+	        , tc1.c_name    sm_area1_nm
+	        , tc2.c_name    sm_area2_nm
+	        , om.om_nm
+	        , tm.om_nm      tm_nm
+		FROM                tb_display_big db
+			<!-- A20180125 k2s 권역명, 지점명 추가-->   
+		         inner join tb_str_manage sm
+		                 on db.sm_code = sm.sm_code
+			left outer join tb_code  tc1           
+			             on db.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on db.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on db.om_code   = om.om_code
+			left outer join (select em.em_no, em.team_code, em.bhf_code, om.om_parent_no, om.om_nm
+									 from       (select s.em_no, s.em_nm, s.team_code, s.bhf_code 
+											       from tb_empl_manage  s 
+												  where use_at = 'Y' and delete_at = 'N') em
+									  inner join (select s.om_code, s.cm_code, s.om_parent_no, s.om_nm, s.om_sort_ordr, s.om_orgnzt_se
+									                from tb_orgnzt_manage s
+									               where om_parent_no is not null and om_orgnzt_se = '2' and use_at = 'Y' and delete_at = 'N') om
+									          on em.team_code  = om.om_code		
+			                ) tm
+                      on db.em_no = tm.em_no		
+	   WHERE db.cm_code = #{cm_code}
+	     AND db.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND db.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND db.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	     <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND db.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND db.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND db.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND db.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND db.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND db.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND db.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND db.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(db.em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+<!-- 관리업체별 진열률현황(Grid버젼) A20180130 k2s -->
+	<select  id="displayArrBodyGridList" resultType="java.util.LinkedHashMap" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT da.da_innb
+			 , date_format(da.da_date,'%Y-%m-%d') da_date
+			 , da.cg_code
+			 , da.cg_nm
+			 , da.me_code
+			 , da.me_nm
+			 , da.sm_code
+			 , da.sm_nm
+			 , da.em_nm
+			 , da.em_no
+			 , ifnull(da.sm_odr,'') AS sm_odr
+			 , da.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}_${item.item_id}
+			, #{item.colunm_id} AS ${item.colunm_id}_${item.group_id}_${item.item_id}_colunm_id
+			, #{item.group_id}  AS ${item.colunm_id}_${item.group_id}_${item.item_id}_group_id
+	        </foreach>
+	        , tc1.c_name    sm_area1_nm
+	        , tc2.c_name    sm_area2_nm
+	        , om.om_nm
+	        , tm.om_nm      tm_nm
+		FROM                tb_display_arr  da
+			<!-- A20180125 k2s 권역명, 지점명 추가-->   
+		         inner join tb_str_manage sm
+		                 on da.sm_code = sm.sm_code
+			left outer join tb_code  tc1           
+			             on da.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on da.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on da.om_code   = om.om_code
+			left outer join (select em.em_no, em.team_code, em.bhf_code, om.om_parent_no, om.om_nm
+									 from       (select s.em_no, s.em_nm, s.team_code, s.bhf_code 
+											       from tb_empl_manage  s 
+												  where use_at = 'Y' and delete_at = 'N') em
+									  inner join (select s.om_code, s.cm_code, s.om_parent_no, s.om_nm, s.om_sort_ordr, s.om_orgnzt_se
+									                from tb_orgnzt_manage s
+									               where om_parent_no is not null and om_orgnzt_se = '2' and use_at = 'Y' and delete_at = 'N') om
+									          on em.team_code  = om.om_code		
+			                ) tm
+                      on da.em_no = tm.em_no		
+	   WHERE da.cm_code = #{cm_code}
+	     AND da.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND da.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND da.da_date like concat(#{params.da_date}, '%') <!-- A20170102 kks 연월 조회조건추가 -->
+	   	 </if>
+	    <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND da.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND da.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND da.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND da.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND da.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND da.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND da.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND da.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(da.em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>
+	
+<!-- 관리업체별 취급률현황(Grid버젼) A20180130 k2s -->	
+	<select  id="displayTrtBodyGridList" resultType="java.util.LinkedHashMap" parameterType="com.dasa.analysis.vo.DisplayGridVo" >
+		SELECT dt.da_innb
+			 , date_format(dt.da_date,'%Y-%m-%d') da_date
+			 , dt.cg_code
+			 , dt.cg_nm
+			 , dt.me_code
+			 , dt.me_nm
+			 , dt.sm_code
+			 , dt.sm_nm
+			 , dt.em_nm
+			 , dt.em_no
+			 , ifnull(dt.sm_odr,'') AS sm_odr
+			 , dt.base_de
+	   		<foreach collection="columnArr" item="item">
+			, ${item.colunm_id}_${item.group_id}
+	        </foreach>
+	        , tc1.c_name    sm_area1_nm
+	        , tc2.c_name    sm_area2_nm
+	        , om.om_nm
+	        , tm.om_nm      tm_nm	        
+		FROM                tb_display_trt   dt
+			<!-- A20180125 k2s 권역명, 지점명 추가-->   
+		         inner join tb_str_manage sm
+		                 on dt.sm_code = sm.sm_code
+			left outer join tb_code  tc1           
+			             on dt.sm_area1  = tc1.c_code
+			left outer join tb_code  tc2
+				          on dt.sm_area2 = tc2.c_code
+			left outer join tb_orgnzt_manage om
+			             on dt.om_code   = om.om_code
+			left outer join (select em.em_no, em.team_code, em.bhf_code, om.om_parent_no, om.om_nm
+									 from       (select s.em_no, s.em_nm, s.team_code, s.bhf_code 
+											       from tb_empl_manage  s 
+												  where use_at = 'Y' and delete_at = 'N') em
+									  inner join (select s.om_code, s.cm_code, s.om_parent_no, s.om_nm, s.om_sort_ordr, s.om_orgnzt_se
+									                from tb_orgnzt_manage s
+									               where om_parent_no is not null and om_orgnzt_se = '2' and use_at = 'Y' and delete_at = 'N') om
+									          on em.team_code  = om.om_code		
+			                ) tm
+                      on dt.em_no = tm.em_no		
+	   WHERE dt.cm_code = #{cm_code}
+	     AND dt.cg_code != 'Z1'
+		 <if test="params != null and params.da_date==null or params.da_date.equals('')">
+	     AND dt.da_date like concat(date_format(now(),'%Y-%m'), '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+		 <if test="params != null and params.da_date!=null and !params.da_date.equals('')">
+	     AND dt.da_date like concat(#{params.da_date}, '%') <!-- A20161230 kks 연월 조회조건추가 -->
+	   	 </if>
+	   	 <if test="params != null and params.em_nm!=null and !params.em_nm.equals('')">
+	     AND dt.em_nm like '%${params.em_nm}%'     
+	   	 </if>
+	   	 <if test="params != null and params.om_code!=null and !params.om_code.equals('')">
+	     AND dt.om_code = #{params.om_code}     
+	   	 </if>
+	   	 <if test="params != null and params.cg_code!=null and !params.cg_code.equals('')">
+	     AND dt.cg_code = #{params.cg_code}      
+	   	 </if>
+	   	 <if test="params != null and params.me_code!=null and !params.me_code.equals('')">
+	     AND dt.me_code = #{params.me_code}     
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr!=null and !params.sm_odr.equals('')">
+	     AND dt.sm_odr = #{params.sm_odr}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_odr1!=null and !params.sm_odr1.equals('') and params.sm_odr2!=null and !params.sm_odr2.equals('')">
+	     AND dt.sm_odr BETWEEN  #{params.sm_odr1} and #{params.sm_odr2}
+	   	 </if>
+	   	 <if test="params != null and params.sm_area1!=null and !params.sm_area1.equals('')">
+	     AND dt.sm_area1 = #{params.sm_area1}      
+	   	 </if>
+	   	 <if test="params != null and params.sm_area2!=null and !params.sm_area2.equals('')">
+	     AND dt.sm_area2 = #{params.sm_area2}      
+	   	 </if>
+	   	 order by if(dt.em_no,'1','') DESC, cg_nm,em_nm, me_nm , sm_nm
+	   	 ${pagingEnd}
+	</select>	
+</mapper>
+

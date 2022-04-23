@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="Reply">
+    <select id="replyCount" parameterType="map" resultType="int" >
+		select count(*)
+		  from tb_bbs_reply
+		 where 1=1
+		<if test="br_innb != null">
+		   and br_innb = #{br_innb}
+		</if>
+		<if test="bm_innb != null">
+		   and bm_innb = #{bm_innb}
+		</if>
+		<if test="br_depth != null">
+		   and br_depth = #{br_depth}
+		</if>
+		<if test="parent_br_innb != null">
+		   and parent_br_innb = #{parent_br_innb}
+		</if>
+		   and delete_at = 'N'
+    </select>
+
+    <select id="replyList" parameterType="map" resultType="com.dasa.communication.vo.ReplyVo" >
+        select br_innb as 'br_innb'
+             , bm_innb as 'bm_innb'
+             , parent_br_innb as 'parent_br_innb'
+             , br_depth as 'br_depth'
+             , br_cn as 'br_cn'
+             , e.em_no as 'regist_man'
+             , e.em_nm as 'em_nm'
+             , date_format(b.regist_de, '%Y-%m-%d %H:%i') as 'regist_de'
+             , case when b.regist_man = #{regist_man} then 'Y' else 'N' end as 'auth_delete'
+          from tb_bbs_reply b
+          left outer join  tb_empl_manage e
+            on b.regist_man = e.em_no
+         where bm_innb = #{bm_innb}
+           and b.delete_at = 'N'
+         order by br_depth asc, br_innb desc
+    </select>
+
+    <insert id="replyInsert"  parameterType="com.dasa.communication.vo.ReplyVo" useGeneratedKeys="true"  keyProperty="br_innb" >
+        INSERT INTO
+        tb_bbs_reply (
+        <!-- BR_INNB -->
+          BM_INNB
+        <if test="parent_br_innb != null">
+        , PARENT_BR_INNB
+        , BR_DEPTH
+        </if>
+        , BR_CN
+        , DELETE_AT
+        , REGIST_MAN
+        , REGIST_DE
+        )
+        VALUES (
+         <!--  #{br_innb} -->
+          #{bm_innb}
+        <if test="parent_br_innb != null">
+        , #{parent_br_innb}
+        , (SELECT tbr.br_depth + 1 FROM tb_bbs_reply tbr WHERE tbr.br_innb = #{parent_br_innb})
+        </if>
+        , #{br_cn}
+        , 'N'
+        , #{regist_man}
+        , now()
+        )
+        <selectKey resultType="String" order="AFTER" keyProperty="br_innb"  >
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+    
+    <delete id="replyDelete" parameterType="map" >
+        UPDATE tb_bbs_reply
+           SET
+          	 delete_at    = 'Y'
+          WHERE  br_innb = #{br_innb}
+          <if test="auth_flag != 1 and auth_flag != 2"> 
+          and regist_man = #{regist_man}
+          </if>
+  	</delete>
+    
+</mapper>

@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="actvityRndPlan">
+	<select id="rndPlanList" parameterType="map" resultType="com.dasa.activity.vo.ActivityRndPlanVo">
+		SELECT rn
+		     , MAX(thw_cd) thw_cd
+		     , MAX(thw_nm) thw_nm
+		     , MAX(fri_cd) fri_cd
+		     , MAX(fri_nm) fri_nm
+		     , MAX(sat_cd) sat_cd
+		     , MAX(sat_nm) sat_nm
+		     , MAX(sun_cd) sun_cd
+		     , MAX(sun_nm) sun_nm
+		     , MAX(mon_cd) mon_cd
+		     , MAX(mon_nm) mon_nm
+		     , MAX(tue_cd) tue_cd
+		     , MAX(tue_nm) tue_nm
+		     , MAX(wed_cd) wed_cd
+		     , MAX(wed_nm) wed_nm
+		  FROM (SELECT DS.* 
+		  		  FROM (SELECT (CASE WHEN @basede= PRDI.plan_de AND PRDI.prdi_sm_code &lt;&gt; 'bigo' AND PRDI.prdi_sm_code &lt;&gt; 'evn'  THEN @rownum:=@rownum+1 
+						             WHEN PRDI.prdi_sm_code = 'bigo'  	   THEN 11
+						             WHEN PRDI.prdi_sm_code = 'evn'		   THEN 12
+						             ELSE @rownum:=1 END) rn
+						     , (@basede:=PRDI.plan_de) basede
+						     , IF(PR.base_de = PRDI.plan_de,PRDI.prdi_sm_code,'') AS thw_cd
+						     , IF(PR.base_de = PRDI.plan_de,PRDI.prdi_sm_code_nm,'') AS thw_nm
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 1 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS fri_cd 
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 1 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS fri_nm 
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 2 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS sat_cd 
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 2 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS sat_nm
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 3 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS sun_cd 
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 3 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS sun_nm
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 4 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS mon_cd
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 4 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS mon_nm
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 5 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS tue_cd
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 5 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS tue_nm
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 6 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code,''	  )AS wed_cd
+						     , IF(DATE_FORMAT(PR.base_de + INTERVAL 6 DAY,'%Y%m%d') = PRDI.plan_de,PRDI.prdi_sm_code_nm,'')AS wed_nm
+		  				  FROM tb_plan_rnd PR
+						  LEFT OUTER JOIN tb_plan_rnd_day PRD
+		  					ON PR.base_de = PRD.base_de
+		  				   AND PR.regist_man = PRD.regist_man
+		  				   AND PR.base_de = #{base_de}
+			  		 	   AND PR.regist_man = #{em_no}
+		  				  LEFT OUTER JOIN (SELECT prdi_sm_code
+					      						, prdi_sm_code_nm
+					      						, plan_de 
+					  						 FROM tb_plan_rnd_day_item
+					  						WHERE base_de = #{base_de}
+					  						  AND regist_man = #{em_no} 
+					  						  AND delete_at= 'N'
+											UNION ALL
+										   SELECT 'bigo' prdi_sm_code
+												, prd_partclr_matter prdi_sm_code_nm
+												, plan_de 
+											 FROM tb_plan_rnd_day
+											WHERE base_de = #{base_de}
+											  AND regist_man = #{em_no} 
+											  AND delete_at= 'N'
+										   ) PRDI
+					  		ON PRD.plan_de = PRDI.plan_de  
+					  		 ,(SELECT @basede:='',@rownum:=0 FROM DUAL) RN
+			       	 	 WHERE PR.base_de = #{base_de}
+			  		 	   AND PR.regist_man = #{em_no}
+			  		   ) DS
+		) DS2
+		GROUP BY RN		
+	</select>
+	
+	<select id="rndPlanScheList" parameterType="map" resultType="com.dasa.activity.vo.ActivityRndPlanScheVo">
+		select me_sj
+			 , me_sj_color
+		     , DATE_FORMAT (STR_TO_DATE(schdul_bgnde ,'%Y%m%d') ,'%Y%m%d') bgnde
+		     , DATE_FORMAT (STR_TO_DATE(schdul_endde ,'%Y%m%d') ,'%Y%m%d') endde
+		  from tb_main_event
+		  where me_innb IN(
+		    select me_innb 
+		      from tb_main_event_target 
+		     where delete_at = 'N'
+		       and (sm_code IN (
+		       			SELECT SE.sm_code
+						  FROM tb_str_empl SE
+						  LEFT OUTER JOIN tb_str_manage SM
+						    ON SE.sm_code = SM.sm_code
+						 WHERE SE.em_no = #{em_no}
+						   AND SE.delete_at = 'N'
+		       		)
+		       		or om_code = (select bhf_code from tb_empl_manage where em_no = #{om_code})
+		       		)
+		  )
+		  and delete_at = 'N'
+		  and (
+		      DATE_FORMAT (STR_TO_DATE(schdul_bgnde ,'%Y%m%d') ,'%Y%m%d' )
+		      BETWEEN  #{base_de}  
+		      AND DATE_FORMAT(#{base_de} + INTERVAL 7 DAY,'%Y%m%d')
+		  or  DATE_FORMAT (STR_TO_DATE(schdul_endde ,'%Y%m%d') ,'%Y%m%d')
+		      BETWEEN  #{base_de}  
+		      AND DATE_FORMAT(#{base_de} + INTERVAL 7 DAY,'%Y%m%d')
+		  )	
+	</select>
+	<select id="rndPlanStrList" parameterType="String" resultType="com.dasa.activity.vo.ActivityRndPlanStrVo">
+		SELECT SE.sm_code
+		     , SM.sm_nm 
+		  FROM tb_str_empl SE
+		  LEFT OUTER JOIN tb_str_manage SM
+		    ON SE.sm_code = SM.sm_code
+		 WHERE SE.em_no = #{em_no}
+		   AND SE.delete_at = 'N'
+		   AND SM.sm_oper_at = 'Y'
+		   
+	</select>
+	<select id="rndPlanStrSelectList" parameterType="map" resultType="com.dasa.activity.vo.ActivityRndPlanStrVo">
+		select prdi_sm_code sm_code
+		     , prdi_sm_code_nm sm_nm 
+		  from tb_plan_rnd_day_item
+		where regist_man = #{em_no}
+		and plan_de = #{plan_de}
+	</select>
+	<select id="rndPlanDayList" parameterType="map" resultType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		select PR.base_de 
+		     , PRD.plan_de     
+		  from tb_plan_rnd PR
+		  LEFT OUTER JOIN tb_plan_rnd_day PRD
+		  ON PR.base_de = PRD.base_de
+		where PR.base_de = #{base_de}
+		  AND PR.regist_man = #{em_no}
+		AND PR.delete_at = 'N'
+	</select>
+	
+	
+	<insert id="rndPlanSave"  parameterType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		INSERT INTO tb_plan_rnd
+			(base_de, cm_code, om_code, delete_at, regist_man, regist_de, updt_man, updt_de) 
+		VALUES
+			(#{base_de}, #{cm_code}, #{om_code}, 'N', #{regist_man}, NOW(), #{updt_man}, NOW())
+		ON DUPLICATE KEY UPDATE
+		updt_man = #{regist_man},
+		updt_de = NOW()
+	</insert>
+	<insert id="rndPlanDaySave"  parameterType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		INSERT INTO tb_plan_rnd_day
+			(plan_de, base_de, cm_code, om_code
+			<if test="prd_partclr_matter != null and !prd_partclr_matter.equals('') ">
+			, prd_partclr_matter
+			</if>
+			, delete_at, regist_man, regist_de, updt_man, updt_de) 
+		VALUES
+			(#{plan_de}, #{base_de}, #{cm_code}, #{om_code}
+			<if test="prd_partclr_matter != null and !prd_partclr_matter.equals('') ">
+			, #{prd_partclr_matter}
+			</if>
+			, 'N', #{regist_man}, NOW(), #{updt_man}, NOW())
+		ON DUPLICATE KEY UPDATE		
+		<if test="prd_partclr_matter != null and !prd_partclr_matter.equals('') "> 
+		<!-- M20180416 kbk 모바일에서 활동관리 매장추가시 비고 null로 되어 수정 -->
+		prd_partclr_matter = #{prd_partclr_matter},
+		</if>
+		updt_man = #{regist_man},
+		updt_de = NOW()
+	</insert>
+	<insert id="rndPlanMatterSave"  parameterType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		INSERT INTO tb_plan_rnd_day
+			(plan_de, base_de, cm_code, om_code, prd_partclr_matter, delete_at, regist_man, regist_de, updt_man, updt_de) 
+		VALUES
+			(#{plan_de}, #{base_de}, #{cm_code}, #{om_code}, #{prd_partclr_matter}, 'N', #{em_no}, NOW(), #{updt_man}, NOW())
+		ON DUPLICATE KEY UPDATE		
+		prd_partclr_matter = #{prd_partclr_matter},
+		updt_man = #{regist_man},
+		updt_de = NOW()
+<!-- 		UPDATE tb_plan_rnd_day -->
+<!-- 		SET prd_partclr_matter = #{prd_partclr_matter},  -->
+<!-- 			updt_man = #{regist_man},  -->
+<!-- 			updt_de = NOW() -->
+<!-- 	  WHERE plan_de = #{plan_de}  -->
+<!-- 	    AND base_de = #{base_de} -->
+	</insert>
+	<delete id="rndPlanDayItemDelete"  parameterType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		DELETE FROM tb_plan_rnd_day_item
+		 WHERE base_de = #{base_de}
+		   AND plan_de = #{plan_de}
+		   AND regist_man = #{regist_man}
+	</delete>
+	
+	<delete id="rndMobilePlanItemDelete"  parameterType="com.dasa.activity.vo.ActivityRndPlanDayVo">
+		DELETE FROM tb_plan_rnd_day_item
+		 WHERE prdi_sm_code = #{prdi_sm_code}
+		   AND plan_de = #{plan_de}
+		   AND regist_man = #{em_no}
+	</delete>
+	
+	<insert id="rndPlanDayItemSave"  parameterType="map">
+		INSERT INTO tb_plan_rnd_day_item
+			(prdi_sm_code, plan_de, base_de, cm_code, om_code, prdi_sm_code_nm, delete_at, regist_man, regist_de, updt_man, updt_de, flag) 
+		VALUES
+			(#{prdi_sm_code}, #{plan_de}, #{base_de}, #{cm_code}, #{om_code}, #{prdi_sm_code_nm}, 'N', #{regist_man}, NOW(), #{regist_man}, NOW(), #{flag})
+	</insert>
+	
+	<select id="rndPlanScheTable" parameterType="com.vertexid.vo.NaviVo" resultType="com.dasa.activity.vo.ActivityRndPlanScheTableVo">
+		
+		SELECT    sm.em_no
+		        , sm.em_nm
+		        , sm.sm_code
+		        , sm.sm_nm
+		        , (select s.c_name from tb_code s where sm.sm_odr = s.c_code) sm_odr
+		        , sm.me_code
+		        , sm.me_nm
+		        , sm.om_code
+		        , sm.om_nm
+		        , sm.cm_code
+		        , sm.cg_code
+		        , sm.sm_sap_code
+			     , max(t2.day_01) day_01
+			     , max(t2.day_02) day_02
+			     , max(t2.day_03) day_03
+			     , max(t2.day_04) day_04
+			     , max(t2.day_05) day_05
+			     , max(t2.day_06) day_06
+			     , max(t2.day_07) day_07
+			     , max(t2.day_08) day_08
+			     , max(t2.day_09) day_09
+			     , max(t2.day_10) day_10
+			
+			     , max(t2.day_11) day_11
+			     , max(t2.day_12) day_12
+			     , max(t2.day_13) day_13
+			     , max(t2.day_14) day_14
+			     , max(t2.day_15) day_15
+			     , max(t2.day_16) day_16
+			     , max(t2.day_17) day_17
+			     , max(t2.day_18) day_18
+			     , max(t2.day_19) day_19
+			     , max(t2.day_20) day_20															      
+			   
+			     , max(t2.day_21) day_21
+			     , max(t2.day_22) day_22
+			     , max(t2.day_23) day_23
+			     , max(t2.day_24) day_24
+			     , max(t2.day_25) day_25
+			     , max(t2.day_26) day_26
+			     , max(t2.day_27) day_27
+			     , max(t2.day_28) day_28
+			     , max(t2.day_29) day_29
+			     , max(t2.day_30) day_30      
+			   
+			     , max(t2.day_31) day_31
+		   FROM (
+								 SELECT   t.regist_man
+								        , t.prdi_sm_code
+								        , t.prdi_sm_code_nm
+								        , max(day_01) day_01
+								        , max(day_02) day_02
+								        , max(day_03) day_03
+								        , max(day_04) day_04
+								        , max(day_05) day_05
+								        , max(day_06) day_06
+								        , max(day_07) day_07
+								        , max(day_08) day_08
+								        , max(day_09) day_09
+								        , max(day_10) day_10
+								
+								        , max(day_11) day_11
+								        , max(day_12) day_12
+								        , max(day_13) day_13
+								        , max(day_14) day_14
+								        , max(day_15) day_15
+								        , max(day_16) day_16
+								        , max(day_17) day_17
+								        , max(day_18) day_18
+								        , max(day_19) day_19
+								        , max(day_20) day_20															      
+								      
+								        , max(day_21) day_21
+								        , max(day_22) day_22
+								        , max(day_23) day_23
+								        , max(day_24) day_24
+								        , max(day_25) day_25
+								        , max(day_26) day_26
+								        , max(day_27) day_27
+								        , max(day_28) day_28
+								        , max(day_29) day_29
+								        , max(day_30) day_30      
+								      
+								        , max(day_31) day_31      
+								    FROM (
+<![CDATA[
+												 SELECT prdi.regist_man
+												      , prdi.prdi_sm_code
+												      , prdi.prdi_sm_code_nm
+												      , prdi.prdi_attend_de
+												      , if(concat(#{params.searchYM}, '01') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_01
+												      , if(concat(#{params.searchYM}, '02') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_02
+												      , if(concat(#{params.searchYM}, '03') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_03
+												      , if(concat(#{params.searchYM}, '04') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_04				      
+												      , if(concat(#{params.searchYM}, '05') = prdi.plan_de,case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_05				            
+												      , if(concat(#{params.searchYM}, '06') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_06      
+												      , if(concat(#{params.searchYM}, '07') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_07
+														, if(concat(#{params.searchYM}, '08') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_08
+												      , if(concat(#{params.searchYM}, '09') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_09
+														, if(concat(#{params.searchYM}, '10') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_10
+												
+												      , if(concat(#{params.searchYM}, '11') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_11
+												      , if(concat(#{params.searchYM}, '12') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_12
+												      , if(concat(#{params.searchYM}, '13') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_13
+												      , if(concat(#{params.searchYM}, '14') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_14
+												      , if(concat(#{params.searchYM}, '15') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_15
+												      , if(concat(#{params.searchYM}, '16') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_16
+												      , if(concat(#{params.searchYM}, '17') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_17
+												      , if(concat(#{params.searchYM}, '18') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_18
+												      , if(concat(#{params.searchYM}, '19') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_19
+												      , if(concat(#{params.searchYM}, '20') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_20		      
+												
+												      , if(concat(#{params.searchYM}, '21') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_21
+												      , if(concat(#{params.searchYM}, '22') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_22
+												      , if(concat(#{params.searchYM}, '23') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_23
+												      , if(concat(#{params.searchYM}, '24') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_24
+												      , if(concat(#{params.searchYM}, '25') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_25
+												      , if(concat(#{params.searchYM}, '26') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_26
+												      , if(concat(#{params.searchYM}, '27') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_27
+												      , if(concat(#{params.searchYM}, '28') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_28
+												      , if(concat(#{params.searchYM}, '29') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_29
+												      , if(concat(#{params.searchYM}, '30') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_30      
+												
+												      , if(concat(#{params.searchYM}, '31') = prdi.plan_de, case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end, '0') day_31
+												      , case when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is not null then '11'
+												             when trim(prdi_sm_code) != '' && prdi.prdi_attend_de is null     then '10'
+												             else ''
+												         end
+								      
+								   FROM    tb_plan_rnd_day_item      prdi
+								INNER JOIN tb_empl_manage            em
+								        ON prdi.regist_man = em.em_no
+									    and (em.use_at ='Y' or (em.use_at ='N' and substr(em.em_retire_de,1,6) between #{params.searchYM} and date_format(now(), '%Y%m'))
+									                       or (em.use_at ='N' and substr(em.em_retire_de,1,6) > date_format(now(), '%Y%m'))
+									         )
+]]>
+									   AND em.delete_at    = 'N'
+									   and em.cm_code     = #{cm_code}
+								    <if test="params.emNm != null and !params.emNm.equals('') ">
+								    AND em.em_nm like concat('%',#{params.emNm},'%')
+								    </if>
+								    <if test="params.tmCode != null and !params.tmCode.equals('') ">
+								    and em.team_code = #{params.tmCode}
+								    </if>
+								  WHERE prdi.plan_de like  concat(#{params.searchYM},'%')
+								 ORDER BY prdi.regist_man, prdi.prdi_sm_code, prdi.plan_de
+								 ) t
+								GROUP BY t.regist_man, t.prdi_sm_code, t.prdi_sm_code_nm
+								ORDER BY t.regist_man, t.prdi_sm_code, t.prdi_sm_code_nm
+								) t2
+		 INNER JOIN (select sm.sm_code, sm.me_code, sm.om_code, sm.sm_odr, sm.sm_nm, sm.use_at sm_use_at, sm.sm_oper_at, sm.sm_sap_code, sm.delete_at sm_delete_at
+						      , me.cg_code, me.me_nm, me.use_at me_use_at, me.delete_at me_delete_at
+						      , se.em_no, se.em_sub_at, se.se_empl_ty, se.sm_code se_sm_code, se.delete_at se_delete_at
+						      , em.em_nm
+						      , om.om_nm, om.cm_code
+		              FROM       tb_str_manage    sm
+		              INNER JOIN tb_manage_entrps me
+		                      on sm.me_code = me.me_code
+		                     AND sm.cg_code = me.cg_code
+		                     AND me.use_at     = 'Y'
+		                     AND me.delete_at  = 'N'
+		                     AND me.cg_code   != 'Z1'
+		              INNER JOIN tb_str_empl      se
+		                      ON sm.sm_code = se.sm_code
+									AND se.em_sub_at  = 'N'
+									AND se.delete_at  = 'N'
+						  INNER JOIN tb_empl_manage   em
+								    ON se.em_no       = em.em_no
+<![CDATA[
+									    and (em.use_at ='Y' or (em.use_at ='N' and substr(em.em_retire_de,1,6) between #{params.searchYM} and date_format(now(), '%Y%m'))
+									                       or (em.use_at ='N' and substr(em.em_retire_de,1,6) > date_format(now(), '%Y%m'))
+									         )
+]]>
+									AND em.delete_at   = 'N'
+									AND em.em_dty_code like '%7'
+									and em.cm_code = #{cm_code}
+								    <if test="params.emNm != null and !params.emNm.equals('') ">
+								    AND em.em_nm like concat('%',#{params.emNm},'%')
+								    </if>
+								    <if test="params.tmCode != null and !params.tmCode.equals('') ">
+								    and em.team_code = #{params.tmCode}
+								    </if>								    
+						  INNER JOIN tb_orgnzt_manage om
+						          ON em.bhf_code = om.om_code)	sm
+		         ON sm.sm_code = t2.prdi_sm_code 
+		        and sm.em_no   = t2.regist_man       <!-- M20180228 k2s 현재매장관리자 MD와 과거의 매장관리MD 구분 필요 -->
+		WHERE 1=1
+		  <if test="params.omCode != null and !params.omCode.equals('') ">
+		  AND sm.om_code = #{params.omCode}
+		  </if>
+		  <if test="params.smNm != null and !params.smNm.equals('') ">
+		  AND sm.sm_nm = #{params.smNm}
+		  </if>		  
+
+		GROUP BY sm.em_no
+		        , sm.em_nm
+		        , sm.sm_code        
+		        , sm.sm_nm
+		        , sm.sm_odr
+		        , sm.me_code
+		        , sm.me_nm
+		        , sm.om_code
+		        , sm.om_nm
+		        , sm.cm_code       
+		        , sm.cg_code	
+				, sm.sm_sap_code
+		ORDER BY em_nm, sm_odr, sm_nm, em_nm	
+	</select>
+	
+</mapper>

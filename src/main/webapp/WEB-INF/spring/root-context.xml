@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.1.xsd
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+        http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.1.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd">
+
+
+    <!--:::::::::: Data Source ::::::::::-->
+    <util:properties id="sys_info" location="/properties/sys_info.xml"/>
+    <bean id="dataSourceSpied"  class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="#{sys_info.db_driver}" />
+        <property name="url"             value="#{sys_info.db_url}"/>
+        <property name="username"        value="#{sys_info.db_id}"/>
+        <property name="password"        value="#{sys_info.db_pw}"/>
+        <!--
+        <property name="initialPoolSize" value="100" />
+        <property name="minPoolSize" value="100" />
+        <property name="maxPoolSize" value="300" />
+        <property name="maxIdleTime" value="7200" />
+        <property name="maxStatements" value="200" />
+        <property name="idleConnectionTestPeriod" value="270" />
+        <property name="validationQuery" value="select 1" />
+        -->
+    </bean>
+    
+    <bean id="dataSource" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+        <constructor-arg ref="dataSourceSpied" />
+        <property name="logFormatter">
+            <bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+                <property name="loggingType" value="MULTI_LINE" />
+                <property name="sqlPrefix"   value="SQL         :  "/>
+            </bean>
+        </property>
+    </bean>
+
+<!-- 	<bean id="runtimeProperties" class="org.apache.commons.configuration.PropertiesConfiguration"> -->
+<!--     	<constructor-arg type="java.lang.String" value="/properties/sys_info.xml" /> -->
+<!--     	<property name="reloadingStrategy" ref="reloadingStrategy" /> -->
+<!--     </bean> -->
+<!-- 	<bean id="reloadingStrategy" class="org.apache.commons.configuration.reloading.FileChangedReloadingStrategy"/> -->
+
+
+    <bean id="sqlSessionFactory" class="com.vertexid.utill.ReloadMybatis">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="mapperLocations" value="classpath*:mappers/**/**/*.xml"/>
+    </bean>
+<!--     <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean"> -->
+<!--         <property name="dataSource" ref="dataSource"/> -->
+<!--         <property name="mapperLocations" value="classpath*:mappers/**/**/*.xml"/> -->
+<!--     </bean> -->
+
+
+    <!-- Transactional -->
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+    <bean id="transactionManager"
+        class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+    <bean id="transactionMultiManager"
+        class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+        <qualifier value="multi" />
+    </bean>
+
+    <!-- SqlSessionTemplate -->
+    <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg index="0" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- Mybatis -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.dasa.mappers" />
+    </bean>
+
+    <!-- Fileuploader -->
+    <bean id="multipartResolver"
+        class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="defaultEncoding" value="UTF-8"></property>
+        <property name="maxUploadSize" value="300000"></property>
+    </bean>
+
+    <!-- file -->
+    <bean class="org.springframework.web.servlet.view.BeanNameViewResolver">
+        <property name="order" value="0"></property>
+    </bean>
+
+    <!-- json -->
+    <bean
+        class="org.springframework.web.servlet.view.json.MappingJacksonJsonView" id="jsonView">
+        <property name="contentType" value="application/json;charset=UTF-8" />
+    </bean>
+
+    <!-- logj4 -->
+    <bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetClass" value="org.springframework.util.Log4jConfigurer"/>
+        <property name="targetMethod" value="initLogging"/>
+        <property name="arguments">
+            <list>
+                <value>classpath:log4j.xml</value>
+            </list>
+        </property>
+    </bean>
+
+    <!--################################################# dashboard #################################################-->
+    <bean id="dashService" class="com.dasa.dashboard.service.DashService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!--################################################# 전자결재 start #################################################-->
+
+    <!--################################################# 분석통계 start #################################################-->
+    <bean id="attandanceService" class="com.dasa.analysis.service.AttandanceService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <bean id="disPlayService" class="com.dasa.analysis.service.DisPlayService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!--################################################# 전자결재 start #################################################-->
+
+    <!--################################################# 전자결재 start #################################################-->
+    <bean id="appprovalService" class="com.dasa.approval.service.ApprovalService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!--################################################# 전자결재 end #################################################-->
+
+    <!--################################################# 매장관리 start #################################################-->
+
+    <bean id="storeService" class="com.dasa.store.service.StoreService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--################################################# 매장관리 end #################################################-->
+
+    <!--################################################# 기준정보 start #################################################-->
+
+    <!-- 품목관리 -->
+    <bean id="itemService" class="com.dasa.baseInfo.service.ItemMgrService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 권한관리-->
+    <bean id="auth" class="com.vertexid.service.AuthService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+
+    <!--################################################# 기준정보 end #################################################-->
+
+    <!-- 메뉴관리 -->
+    <bean id="menu" class="com.vertexid.service.MenuService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 회사관리 -->
+    <bean id="company" class="com.vertexid.service.CompanyService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 조직관리 -->
+    <bean id="organization" class="com.vertexid.service.OrganizationService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 품목관리 -->
+    <bean id="product" class="com.vertexid.service.ProductService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+
+    <!--################################################# 공통 start #################################################-->
+
+    <!-- 파일 -->
+    <bean id="imgFileManager" class="com.vertexid.utill.ImgAttachManager"></bean>
+    <bean id="fileManager" class="com.vertexid.utill.AttachManager"></bean>
+    <bean id="excelManager" class="com.vertexid.utill.ExcelManager"></bean>
+    
+    <bean id="file" class="com.vertexid.service.AttachService"  scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 공통코드관리 -->
+    <bean id="code" class="com.vertexid.service.CommonCodeService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--################################################# 공통 end #################################################-->
+
+    <!-- 사원관리 by 김광욱 -->
+    <bean id="employee" class="com.dasa.employee.service.EmployeeService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 로그인 by 김광욱 -->
+    <bean id="login" class="com.dasa.login.service.LoginService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 모바일 by 김광욱 -->
+    <bean id="mobile" class="com.dasa.mobile.service.MobileService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--################################################# 커뮤니케이션 start #################################################-->
+    <bean id="sendNotification" class="com.dasa.communication.vo.SendNotification"></bean>
+    
+    <bean id="FTPManager" class="com.vertexid.utill.FTPManager"></bean>
+
+    <!--  공지사항 -->
+    <bean id="notice" class="com.dasa.communication.service.NoticeService"  scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--  주요행사 -->
+    <bean id="mainEvent" class="com.dasa.communication.service.MainEventService"    scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 업무지시 -->
+    <bean id="businessOrderService" class="com.dasa.communication.service.BusinessOrderService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 알림메시지 -->
+    <bean id="NoticeMessageService" class="com.dasa.communication.service.NoticeMessageService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 댓글 -->
+    <bean id="ReplyService" class="com.dasa.communication.service.ReplyService"  scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!-- 수신자 선택 -->
+    <bean id="ReceiverService" class="com.dasa.communication.service.ReceiverService"  scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--################################################# 커뮤니케이션 end #################################################-->
+
+
+    <!--################################################# 활동관리 start #################################################-->
+
+    <!-- 활동관리 고정여사원 -->
+    <bean id="activityFixing" class="com.dasa.activity.service.ActivityFixingService"   scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!-- 활동관리 순회여사원 -->
+    <bean id="activityRnd" class="com.dasa.activity.service.ActivityRndService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <bean id="activityOption" class="com.dasa.activity.service.ActivityOptionService"   scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <bean id="activityRndPlan" class="com.dasa.activity.service.ActivityRndPlanService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <bean id="activityCvs" class="com.dasa.activity.service.ActivityCvsService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <bean id="activityTeamleader" class="com.dasa.activity.service.ActivityTeamleaderService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <bean id="eventMonth" class="com.dasa.activity.service.EventMonthService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <bean id="pdImg" class="com.dasa.activity.service.ActivityPdImgService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+
+    <!--################################################# 활동관리 end #################################################-->
+    
+    <!--################################################# 지점별상품관리 start #################################################-->
+    <bean id="bhfProdService" class="com.dasa.bhfProduct.service.bhfProdService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!--################################################# 지점별상품관리 end #################################################-->
+    
+    
+    <!--################################################# 스케쥴러 start ###############################################-->
+    <bean id="sche" class="com.vertexid.service.SchedulerService" scope="singleton">
+        <property name="sqlSessionFactory" ref="sqlSessionFactory" />
+    </bean>
+    <!--################################################# 스케쥴러 end #################################################-->
+
+
+</beans>

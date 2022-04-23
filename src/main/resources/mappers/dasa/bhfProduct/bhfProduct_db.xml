@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="bhfProduct">	
+
+	<select id="bhfProdList" resultType="java.util.Map" parameterType="java.util.Map" >
+		SELECT b.oi_code			
+			    , a.oi_nm			
+			    , a.oi_nick_nm			
+			    , b.oi_type			
+			    , a.oi_sort_ordr		
+			    , b.default_at		
+			    , b.use_at	
+			    , b.pm_code as oi_parn_code	
+			FROM tb_option_item a
+			INNER JOIN tb_trt_orgnzt_manage b
+			ON 1=1
+			AND a.oi_code = b.oi_code
+			AND a.oi_type = b.oi_type
+			AND a.oi_parn_code = b.pm_code
+			WHERE a.delete_at = 'N'
+			AND b.delete_at = 'N'
+			AND b.om_code = #{om_code}
+			AND a.oi_type = #{oi_type}
+			ORDER BY a.OI_SORT_ORDR ASC
+	</select>
+	
+	<update id="prodUseAtUpt" parameterType="java.util.Map" >
+		UPDATE tb_trt_orgnzt_manage
+		SET USE_AT = #{use_at}
+		WHERE OI_CODE = #{oi_code}
+		AND OM_CODE = #{om_code}
+	</update>
+</mapper>

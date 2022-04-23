@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="eventMonth">	
+	<select  id="emmListCnt" resultType="int" parameterType="com.vertexid.vo.NaviVo" >
+		SELECT COUNT(*) cnt
+		FROM tb_event_month_main emm
+		WHERE emm.delete_at = 'N'
+	   	 <if test="params.title != null and !params.title.equals('') ">
+	     AND emm.title LIKE '%${params.title}%'
+	     </if>
+	   	 <if test="params.startDate != null and !params.startDate.equals('') and params.endDate != null and !params.endDate.equals('') ">
+		 AND (emm.emm_date_from  BETWEEN #{params.startDate} AND #{params.endDate}
+		 		OR
+		 		emm.emm_date_to  BETWEEN #{params.startDate} AND #{params.endDate}
+		 		)
+	     </if>
+	</select>
+	<select  id="emmList" resultType="java.util.Map" parameterType="com.vertexid.vo.NaviVo" >
+		${pagingStart}
+		SELECT emm.emm_innb
+			 , emm.title
+			 , emm.contents
+			 , emm.note
+			 , DATE_FORMAT(emm.emm_date_from,'%Y-%m-%d') emm_date_from
+			 , DATE_FORMAT(emm.emm_date_to,'%Y-%m-%d') emm_date_to
+			 , emm.regist_man
+			 , DATE_FORMAT(emm.regist_de,'%Y-%m-%d') regist_de
+			 , emm.updt_man
+			 , DATE_FORMAT(emm.updt_de,'%Y-%m-%d') updt_de
+			 , EM.em_nm
+		FROM tb_event_month_main emm
+		INNER JOIN tb_empl_manage EM
+		  ON emm.regist_man = EM.em_no  
+	   WHERE emm.delete_at = 'N'
+	   	 <if test="params.title != null and !params.title.equals('') ">
+	     AND emm.title LIKE '%${params.title}%'
+	     </if>
+	   	 <if test="params.startDate != null and !params.startDate.equals('') and params.endDate != null and !params.endDate.equals('') ">
+		 AND (emm.emm_date_from  BETWEEN #{params.startDate} AND #{params.endDate}
+		 		OR
+		 		emm.emm_date_to  BETWEEN #{params.startDate} AND #{params.endDate}
+		 		)
+	     </if>
+		ORDER BY emm.regist_de DESC
+		${pagingEnd}
+	</select>
+	
+	<insert id="emmSave" parameterType="java.util.Map">
+		INSERT INTO tb_event_month_main
+			(title, emm_date_from, emm_date_to, contents, delete_at, regist_man, regist_de, updt_man, updt_de)
+		VALUES
+			(#{emmTitle}, #{emmDateFrom}, #{emmDateTo}, #{emmContents}, 'N', #{registMan}, now(), #{registMan}, now())
+	</insert>
+	
+	<select id="emmView" parameterType="java.util.Map" resultType="java.util.Map">
+		SELECT emm.emm_innb
+				, emm.title
+				, emm.contents
+				, emm.note
+				, DATE_FORMAT(emm.emm_date_from,'%Y-%m-%d') emm_date_from
+				, DATE_FORMAT(emm.emm_date_to,'%Y-%m-%d') emm_date_to
+				, emm.regist_man
+				, DATE_FORMAT(emm.regist_de,'%Y-%m-%d') regist_de
+				, emm.updt_man
+				, DATE_FORMAT(emm.updt_de,'%Y-%m-%d') updt_de
+				, EM.em_nm
+		FROM tb_event_month_main emm
+		INNER JOIN tb_empl_manage EM
+		  ON emm.regist_man = EM.em_no  
+	    WHERE emm.delete_at = 'N'
+	    AND emm_innb = #{emmInnb}
+	</select>
+	
+	<update id="emmDel" parameterType="java.util.Map">
+		UPDATE tb_event_month_main
+			SET delete_at = 'Y'
+				, updt_man = #{updtMan}
+				, updt_de = now()
+		WHERE emm_innb = #{emmInnb}
+	</update>
+	
+	<update id="emmUpt" parameterType="java.util.Map">
+		UPDATE tb_event_month_main
+			SET title = #{title}
+				, contents = #{contents}
+				, updt_man = #{updtMan}
+				, updt_de = now()
+		WHERE emm_innb = #{emmInnb}
+	</update>
+	
+	<select id="emiSmList" parameterType="java.util.Map" resultType="java.util.Map">
+            SELECT a.em_no, 
+				       e.em_nm, 
+				       e.em_dty_code,
+				       (SELECT c_name FROM   tb_code WHERE  c_code = e.em_dty_code) AS em_dty_nm, 
+				       d.cg_code, 
+				       d.cg_nm, 
+				       b.me_code, 
+				       c.me_nm, 
+				       b.sm_code, 
+				       b.sm_nm 
+				FROM   tb_str_empl a 
+				       INNER JOIN tb_str_manage b 
+				               ON 1=1 
+				                  AND a.sm_code = b.sm_code 
+				       INNER JOIN tb_manage_entrps c 
+				               ON 1=1 
+				                  AND b.me_code = c.me_code 
+				                  AND b.cg_code = c.cg_code 
+				       INNER JOIN tb_cstmr_group d 
+				               ON 1=1 
+				                  AND c.cg_code = d.cg_code 
+				       INNER JOIN tb_empl_manage e 
+				               ON 1=1 
+				                  AND a.em_no = e.em_no 
+				WHERE  a.delete_at = 'N' 
+				       AND b.delete_at = 'N' 
+				       AND c.delete_at = 'N' 
+				       AND c.use_at = 'Y' 
+				       AND d.delete_at = 'N' 
+				       AND d.use_at = 'Y' 
+				       AND e.delete_at = 'N' 
+				       AND e.use_at = 'Y' 
+		               <if test="omCode != null and !omCode.equals('') ">
+		               and b.om_code = #{omCode}
+		               </if>
+		               <if test="cgCode != null and !cgCode.equals('') ">
+		               and d.cg_code = #{cgCode}
+		               </if>
+		               <if test="meCode != null and !meCode.equals('') ">
+		               and b.me_code = #{meCode}
+		               </if>
+		               <if test="emNo != null and !emNo.equals('') ">
+		               and a.em_no = #{emNo}
+		               </if>
+               
+               <choose>
+	               <when test="meCode != null and !meCode.equals('') ">
+	               group by c.cg_code, b.me_code, b.sm_code
+	               </when>
+	               <when test="cgCode != null and !cgCode.equals('') ">
+	               group by c.cg_code, b.me_code
+	               </when>
+	               <when test="omCode != null and !omCode.equals('') ">
+	               group by c.cg_code
+	               </when>
+               </choose>
+             order by a.regist_de desc
+	</select>
+	
+	<select id="emiListCnt" resultType="int" parameterType="com.vertexid.vo.NaviVo" >
+		SELECT COUNT(*) cnt
+		FROM tb_event_month_main emm
+		INNER JOIN tb_event_month_item emi
+		ON 1=1
+		AND emm.emm_innb = emi.emm_innb
+		INNER JOIN tb_str_manage sm
+		ON 1=1
+		AND emi.sm_code = sm.sm_code
+		AND emi.om_code = sm.om_code
+		WHERE emm.delete_at = 'N'
+		<if test="params.emmInnb!= null and !params.emmInnb.equals('') ">
+		AND emm.emm_innb = ${params.emmInnb}
+		</if>
+		<if test="params.omCode != null and !params.omCode.equals('') ">
+	     AND emi.om_code LIKE '%${params.omCode}%'
+	     </if>
+	     <if test="params.cgCode != null and !params.cgCode.equals('') ">
+	     AND sm.cg_code LIKE '%${params.cgCode}%'
+	     </if>
+	     <if test="params.meCode != null and !params.meCode.equals('') ">
+	     AND sm.me_code LIKE '%${params.meCode}%'
+	     </if>
+	     <if test="params.smCode != null and !params.smCode.equals('') ">
+	     AND emi.sm_code LIKE '%${params.smCode}%'
+	     </if>
+		<if test="params.title != null and !params.title.equals('') ">
+	     AND emm.title LIKE '%${params.title}%'
+	     </if>
+	   	 <if test="params.startDate != null and !params.startDate.equals('') ">
+		 AND emi.updt_de  &gt;= #{params.startDate}
+	     </if>
+	   	 <if test="params.endDate != null and !params.endDate.equals('') ">
+		 AND DATE_FORMAT(emi.updt_de,'%Y%m%d')  &lt;= #{params.endDate}
+	     </if>
+	     <if test="params.loginCpCd!= null and !params.loginCpCd.equals('') ">
+		AND (select cm_code from tb_empl_manage where em_no=emi.regist_man) = ${params.loginCpCd}
+		</if>
+	</select>
+	
+	<select id="emiList" resultType="java.util.Map" parameterType="com.vertexid.vo.NaviVo" >
+	${pagingStart}
+		SELECT emm.title
+				, emi.om_code
+		 		, (select t.om_nm from tb_orgnzt_manage t where t.om_code = emi.om_code) as om_nm
+		 		, (select cg.cg_nm from tb_cstmr_group cg where cg.cg_code = sm.cg_code and cg.delete_at='N' and cg.use_at='Y') as cg_nm
+ 				, (select me.me_nm from tb_manage_entrps me where me.me_code = sm.me_code and me.cg_code = sm.cg_code and me.delete_at='N' and me.use_at='Y') as me_nm
+				, emi.sm_code
+				, sm.sm_nm
+				, emi.emi_img_url
+				, emi.note
+				, emi.regist_man
+				, DATE_FORMAT(emi.regist_de,'%Y-%m-%d') as regist_de
+				, emi.updt_man
+				, DATE_FORMAT(emi.updt_de,'%Y-%m-%d') as updt_de
+		FROM tb_event_month_main emm
+		INNER JOIN tb_event_month_item emi
+		ON 1=1
+		AND emm.emm_innb = emi.emm_innb
+		INNER JOIN tb_str_manage sm
+		ON 1=1
+		AND emi.sm_code = sm.sm_code
+		AND emi.om_code = sm.om_code
+		WHERE emm.delete_at = 'N'
+		<if test="params.emmInnb!= null and !params.emmInnb.equals('') ">
+		AND emm.emm_innb = ${params.emmInnb}
+		</if>
+		<if test="params.omCode != null and !params.omCode.equals('') ">
+	     AND emi.om_code LIKE '%${params.omCode}%'
+	     </if>
+	     <if test="params.cgCode != null and !params.cgCode.equals('') ">
+	     AND sm.cg_code LIKE '%${params.cgCode}%'
+	     </if>
+	     <if test="params.meCode != null and !params.meCode.equals('') ">
+	     AND sm.me_code LIKE '%${params.meCode}%'
+	     </if>
+	     <if test="params.smCode != null and !params.smCode.equals('') ">
+	     AND emi.sm_code LIKE '%${params.smCode}%'
+	     </if>
+		<if test="params.title != null and !params.title.equals('') ">
+	     AND emm.title LIKE '%${params.title}%'
+	     </if>
+	   	 <if test="params.startDate != null and !params.startDate.equals('') ">
+		 AND emi.updt_de  &gt;= #{params.startDate}
+	     </if>
+	   	 <if test="params.endDate != null and !params.endDate.equals('') ">
+		 AND DATE_FORMAT(emi.updt_de,'%Y%m%d')  &lt;= #{params.endDate}
+	     </if>
+		<if test="params.loginCpCd!= null and !params.loginCpCd.equals('') ">
+		AND (select cm_code from tb_empl_manage where em_no=emi.regist_man) = ${params.loginCpCd}
+		</if>
+	     ORDER BY emi.updt_de DESC
+	${pagingEnd}
+	</select>
+	
+	<insert id="emiSave" parameterType="com.dasa.activity.vo.ActivityEventMonthVo">
+		INSERT INTO tb_event_month_item
+			(emm_innb, om_code, sm_code, emi_img_url, note, delete_at, regist_man, regist_de, updt_man, updt_de)
+		VALUES
+			(#{emm_innb}, #{om_code}, #{sm_code}, #{emi_img_url}, #{note}, 'N', #{em_no}, now(), #{em_no}, now())
+	</insert>
+	
+	<update id="emiUpt" parameterType="java.util.Map">
+		UPDATE tb_event_month_item
+			SET emi_img_url = #{emi_img_url}
+				, note = #{note}
+				, updt_man = #{em_no}
+				, updt_de = now()
+		WHERE emi_innb = #{emi_innb}
+	</update>
+	
+	<update id="emiDel" parameterType="java.util.Map">
+		UPDATE tb_event_month_item
+			SET delete_at = 'Y'
+				, updt_man = #{em_no}
+				, updt_de = now()
+		WHERE emi_innb = #{emi_innb}
+	</update>
+	
+</mapper>

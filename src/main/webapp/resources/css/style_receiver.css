@@ -1,0 +1,12 @@
+.receiver-popup { position: absolute; top: 0; left: 0; right: 0; margin-left: auto; margin-right: auto; width: 100%; }
+.receiver-radio { width: auto; -webkit-box-shadow: none; -moz-box-shadow: none; box-shadow: none; }
+.receiver-label { font-size: 12px; margin-right: 20px; }
+.receiver-label:hover { color: #F07; }
+.receiver-container { display: table; margin-top: 10px; border: 0;}
+.receiver-sub-container { position:relative; display: table-cell; width: 250px; height:500px; }
+.receiver-left-container { position:absolute; width:100%; height:240px; padding:5px; }
+.container-select { border: 1px solid #D5D5D5; padding: 0px; margin: 0px; background: #ffffff; clear: both;}
+.receiver-mid-container { display: table-cell; vertical-align: middle; padding:5px; }
+.receiver-arrow { display:block; width: 50px; height:25px; border: 1px solid #D5D5D5; text-align: center; margin-bottom: 5px; cursor: pointer; }
+.receiver-arrow i { vertical-align: middle; }
+.receiver-arrow:hover { background: #F9F9F9; color: #F07; }
